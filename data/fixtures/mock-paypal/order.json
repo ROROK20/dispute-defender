@@ -1,0 +1,68 @@
+{
+  "id": "5O190127TN364715T",
+  "intent": "CAPTURE",
+  "status": "COMPLETED",
+  "payment_source": {
+    "paypal": {
+      "email_address": "marisol.fenwick@example.com",
+      "account_id": "QYR5Z8XDVJNXQ",
+      "account_status": "VERIFIED",
+      "name": { "given_name": "Marisol", "surname": "Fenwick" },
+      "address": { "country_code": "US" }
+    }
+  },
+  "purchase_units": [
+    {
+      "reference_id": "JT-107",
+      "invoice_id": "JT-ORD-5O190127TN364715T",
+      "amount": {
+        "currency_code": "USD",
+        "value": "68.00",
+        "breakdown": { "item_total": { "currency_code": "USD", "value": "68.00" } }
+      },
+      "payee": { "email_address": "seller@juniperthread.example.com", "merchant_id": "JTCSANDBOX0001" },
+      "items": [
+        {
+          "name": "Brushed Flannel Overshirt",
+          "sku": "JT-107",
+          "quantity": "1",
+          "unit_amount": { "currency_code": "USD", "value": "68.00" },
+          "category": "PHYSICAL_GOODS"
+        }
+      ],
+      "shipping": {
+        "name": { "full_name": "Marisol Fenwick" },
+        "address": {
+          "address_line_1": "2218 SE Ankeny St",
+          "admin_area_2": "Portland",
+          "admin_area_1": "OR",
+          "postal_code": "97214",
+          "country_code": "US"
+        }
+      },
+      "payments": {
+        "captures": [
+          {
+            "id": "7MS50287AX193722H",
+            "status": "COMPLETED",
+            "amount": { "currency_code": "USD", "value": "68.00" },
+            "final_capture": true,
+            "create_time": "2026-10-08T18:31:05Z",
+            "update_time": "2026-10-08T18:31:05Z"
+          }
+        ]
+      }
+    }
+  ],
+  "payer": {
+    "name": { "given_name": "Marisol", "surname": "Fenwick" },
+    "email_address": "marisol.fenwick@example.com",
+    "payer_id": "QYR5Z8XDVJNXQ",
+    "address": { "country_code": "US" }
+  },
+  "create_time": "2026-10-08T18:29:47Z",
+  "update_time": "2026-10-08T18:31:05Z",
+  "links": [
+    { "href": "https://api-m.sandbox.paypal.com/v2/checkout/orders/5O190127TN364715T", "rel": "self", "method": "GET" }
+  ]
+}

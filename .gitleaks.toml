@@ -1,0 +1,13 @@
+title = "DisputeDefender gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Template and fictional fixture files contain no real secrets"
+paths = [
+  '''(^|/)\.env\.example$''',
+  '''(^|/)data/fixtures/''',
+  '''(^|/)postman/DisputeDefender\.sandbox\.postman_environment\.json$''',
+  '''(^|/)package-lock\.json$''',
+]

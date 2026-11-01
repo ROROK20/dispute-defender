@@ -1,0 +1,55 @@
+{
+  "name": "dispute-defender",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A dispute agent for small PayPal sellers: cited evidence, honest fight-or-refund math, and root-cause prevention.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.20.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
+    "setup": "tsx scripts/setup.ts",
+    "seed": "tsx scripts/seed-store.ts",
+    "sync": "tsx scripts/sync-disputes.ts",
+    "webhook:register": "tsx scripts/register-webhook.ts",
+    "evidence:static": "tsx scripts/make-static-evidence.ts",
+    "smoke:evidence": "tsx scripts/smoke-provide-evidence.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.65.0",
+    "@paypal/react-paypal-js": "8.9.2",
+    "@react-pdf/renderer": "4.3.1",
+    "ag-grid-community": "34.2.0",
+    "ag-grid-react": "34.2.0",
+    "better-sqlite3": "12.4.1",
+    "clsx": "2.1.1",
+    "date-fns": "4.1.0",
+    "nanoid": "5.1.6",
+    "next": "15.5.4",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "3.3.1",
+    "@playwright/test": "1.56.0",
+    "@tailwindcss/postcss": "4.1.14",
+    "@types/better-sqlite3": "7.6.13",
+    "@types/node": "22.18.8",
+    "@types/react": "19.1.17",
+    "@types/react-dom": "19.1.11",
+    "eslint": "9.37.0",
+    "eslint-config-next": "15.5.4",
+    "tailwindcss": "4.1.14",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "store": {
+    "name": "Juniper Thread Co.",
+    "tagline": "Small-batch apparel, cut and sewn by hand.",
+    "currency": "USD",
+    "support_email": "hello@juniperthread.example.com",
+    "sandbox_notice": "Sandbox demo data. Juniper Thread Co. is a fictional store."
+  },
+  "policies": [
+    {
+      "slug": "returns",
+      "title": "Returns & Refunds Policy",
+      "file": "data/policies/returns-policy.md",
+      "published_at": "2026-01-15T00:00:00.000Z"
+    },
+    {
+      "slug": "shipping",
+      "title": "Shipping Policy",
+      "file": "data/policies/shipping-policy.md",
+      "published_at": "2026-01-15T00:00:00.000Z"
+    },
+    {
+      "slug": "size-guide",
+      "title": "Size Guide",
+      "file": "data/policies/size-guide.md",
+      "published_at": "2026-01-15T00:00:00.000Z"
+    }
+  ],
+  "skus": [
+    { "sku": "JT-101", "name": "Indigo Chore Jacket", "category": "outerwear", "price_cents": 12800, "cogs_cents": 5100, "description": "Unlined chore jacket in 10 oz indigo-dyed cotton twill. Three patch pockets, corozo buttons, boxy fit. Hand wash cold; color will fade with wear.", "size_chart_version": "v1" },
+    { "sku": "JT-102", "name": "Hand-Stitched Canvas Tote", "category": "accessories", "price_cents": 4200, "cogs_cents": 1400, "description": "Natural 12 oz canvas tote with hand-stitched leather handles and one interior pocket. 15 x 16 x 5 in.", "size_chart_version": null },
+    { "sku": "JT-103", "name": "Waffle-Knit Henley", "category": "tops", "price_cents": 5600, "cogs_cents": 2000, "description": "Long-sleeve three-button henley in cotton waffle knit. Relaxed fit; pre-washed to limit shrinkage.", "size_chart_version": "v1" },
+    { "sku": "JT-104", "name": "Selvedge Straight Jeans", "category": "bottoms", "price_cents": 11800, "cogs_cents": 4600, "description": "13.5 oz raw selvedge denim, mid rise, straight leg. Unwashed; expect up to 1 in. of length shrinkage after first wash.", "size_chart_version": "v1" },
+    { "sku": "JT-105", "name": "Merino Rib Beanie", "category": "accessories", "price_cents": 3400, "cogs_cents": 1100, "description": "Double-layer 2x2 rib beanie in 100% merino wool. One size.", "size_chart_version": null },
+    { "sku": "JT-106", "name": "Block-Print Bandana", "category": "accessories", "price_cents": 1800, "cogs_cents": 500, "description": "22 x 22 in. cotton bandana, hand block-printed with plant-based ink. Each print varies slightly.", "size_chart_version": null },
+    { "sku": "JT-107", "name": "Brushed Flannel Overshirt", "category": "tops", "price_cents": 6800, "cogs_cents": 2500, "description": "Heavyweight brushed cotton flannel overshirt in a forest plaid. Two chest pockets, regular fit.", "size_chart_version": "v1" },
+    { "sku": "JT-108", "name": "Garment-Dyed Crew Tee", "category": "tops", "price_cents": 3600, "cogs_cents": 1200, "description": "Midweight cotton crew tee, garment-dyed in small batches. Shade varies batch to batch; shown in Clay.", "size_chart_version": "v1" },
+    { "sku": "JT-109", "name": "Corduroy Work Pants", "category": "bottoms", "price_cents": 8400, "cogs_cents": 3200, "description": "8-wale cotton corduroy work pants with a relaxed taper and gusseted crotch.", "size_chart_version": "v1" },
+    { "sku": "JT-110", "name": "Quilted Liner Vest", "category": "outerwear", "price_cents": 9200, "cogs_cents": 3600, "description": "Diamond-quilted nylon vest with recycled polyester fill and snap front. Layers under the chore jacket.", "size_chart_version": "v1" },
+    { "sku": "JT-111", "name": "Linen Camp Shirt", "category": "tops", "price_cents": 7200, "cogs_cents": 2700, "description": "Short-sleeve camp-collar shirt in washed European linen. Boxy fit.", "size_chart_version": "v1" },
+    { "sku": "JT-112", "name": "Hemp Market Apron", "category": "accessories", "price_cents": 4800, "cogs_cents": 1600, "description": "Full-length hemp canvas apron with cross-back straps and a divided front pocket.", "size_chart_version": null },
+    { "sku": "JT-113", "name": "Wool Blend Scarf", "category": "accessories", "price_cents": 5200, "cogs_cents": 1900, "description": "70% wool / 30% nylon herringbone scarf, 72 x 12 in., fringed ends.", "size_chart_version": null },
+    { "sku": "JT-114", "name": "Linen Wrap Dress", "category": "dresses", "price_cents": 8800, "cogs_cents": 3300, "description": "Midi-length wrap dress in washed linen with a self-tie waist and flutter sleeves. Shown in Sage. Cut to our size chart v1; linen relaxes slightly with wear.", "size_chart_version": "v1" },
+    { "sku": "JT-115", "name": "Smocked Midi Skirt", "category": "bottoms", "price_cents": 7600, "cogs_cents": 2800, "description": "Cotton poplin midi skirt with a fully smocked elastic waist and side pockets.", "size_chart_version": "v1" },
+    { "sku": "JT-116", "name": "Ribbed Tank", "category": "tops", "price_cents": 2800, "cogs_cents": 900, "description": "Fitted 1x1 rib tank in organic cotton with a touch of elastane.", "size_chart_version": "v1" },
+    { "sku": "JT-117", "name": "Patchwork Quilt Throw", "category": "home", "price_cents": 14800, "cogs_cents": 6200, "description": "50 x 60 in. throw pieced from our cutting-room offcuts and hand-quilted. Every throw is one of a kind.", "size_chart_version": null },
+    { "sku": "JT-118", "name": "Waxed Canvas Bucket Hat", "category": "accessories", "price_cents": 3800, "cogs_cents": 1300, "description": "Paraffin-waxed cotton canvas bucket hat with a cotton lining. S/M and L/XL.", "size_chart_version": "v1" },
+    { "sku": "JT-119", "name": "Chunky Knit Cardigan", "category": "tops", "price_cents": 11200, "cogs_cents": 4300, "description": "Hand-finished chunky knit cardigan in a wool-alpaca blend with horn buttons. Oversized fit.", "size_chart_version": "v1" },
+    { "sku": "JT-120", "name": "Cotton Gauze Pajama Set", "category": "sleepwear", "price_cents": 9600, "cogs_cents": 3700, "description": "Double-layer cotton gauze pajama shirt and drawstring pant.", "size_chart_version": "v1" }
+  ]
+}

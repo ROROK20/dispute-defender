@@ -1,0 +1,38 @@
+{
+  "dispute_id": "PP-D-27824",
+  "create_time": "2026-10-24T02:15:37.000Z",
+  "update_time": "2026-10-24T02:17:01.000Z",
+  "disputed_transactions": [
+    {
+      "buyer_transaction_id": "1RW90365GH773018D",
+      "seller_transaction_id": "9GF13457QE820934M",
+      "create_time": "2026-10-01T13:02:19.000Z",
+      "transaction_status": "COMPLETED",
+      "gross_amount": { "currency_code": "USD", "value": "112.00" },
+      "invoice_number": "JT-ORD-6PL02875RA118490Z",
+      "buyer": { "name": "Dario Okafor" },
+      "seller": { "merchant_id": "JTCSANDBOX0001", "name": "Juniper Thread Co." },
+      "items": [
+        { "item_id": "JT-119", "item_name": "Chunky Knit Cardigan", "item_quantity": "1" }
+      ]
+    }
+  ],
+  "reason": "UNAUTHORISED",
+  "status": "WAITING_FOR_SELLER_RESPONSE",
+  "dispute_amount": { "currency_code": "USD", "value": "112.00" },
+  "dispute_life_cycle_stage": "CHARGEBACK",
+  "dispute_channel": "INTERNAL",
+  "seller_response_due_date": "2029-12-31T23:59:59.000Z",
+  "messages": [
+    {
+      "posted_by": "BUYER",
+      "time_posted": "2026-10-24T02:15:37.000Z",
+      "content": "I do not recognize this purchase and did not authorize it."
+    }
+  ],
+  "links": [
+    { "href": "https://api-m.sandbox.paypal.com/v1/customer/disputes/PP-D-27824", "rel": "self", "method": "GET" },
+    { "href": "https://api-m.sandbox.paypal.com/v1/customer/disputes/PP-D-27824/provide-evidence", "rel": "provide_evidence", "method": "POST" },
+    { "href": "https://api-m.sandbox.paypal.com/v1/customer/disputes/PP-D-27824/accept-claim", "rel": "accept_claim", "method": "POST" }
+  ]
+}

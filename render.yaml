@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: dispute-defender
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run setup && npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22.20.0
+      - key: PAYPAL_ENV
+        value: sandbox
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: NEXT_PUBLIC_PAYPAL_CLIENT_ID
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL_AGENT
+        value: claude-sonnet-5-5
+      - key: ANTHROPIC_MODEL_REVIEW
+        value: claude-opus-5-5
+      - key: REVIEW_ENABLED
+        value: "true"
+      - key: DATABASE_PATH
+        value: ./data/app.db
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: DISPUTE_FEE_USD
+        value: "0"
+      - key: SELLER_TIME_COST_USD
+        value: "15"
+      - key: DEMO_TRIGGER_PER_IP_PER_MIN
+        value: "1"
+      - key: DEMO_TRIGGER_GLOBAL_PER_HOUR
+        value: "10"
+      - key: PAYPAL_MOCK
+        value: "0"
+      - key: ANTHROPIC_MOCK
+        value: "0"
+      - key: POLL_INTERVAL_MS
+        value: "30000"

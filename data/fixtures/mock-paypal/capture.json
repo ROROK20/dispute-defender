@@ -1,0 +1,27 @@
+{
+  "id": "7MS50287AX193722H",
+  "status": "COMPLETED",
+  "amount": { "currency_code": "USD", "value": "68.00" },
+  "final_capture": true,
+  "seller_protection": {
+    "status": "ELIGIBLE",
+    "dispute_categories": ["ITEM_NOT_RECEIVED", "UNAUTHORIZED_TRANSACTION"]
+  },
+  "seller_receivable_breakdown": {
+    "gross_amount": { "currency_code": "USD", "value": "68.00" },
+    "paypal_fee": { "currency_code": "USD", "value": "2.86" },
+    "net_amount": { "currency_code": "USD", "value": "65.14" }
+  },
+  "invoice_id": "JT-ORD-5O190127TN364715T",
+  "supplementary_data": {
+    "related_ids": { "order_id": "5O190127TN364715T" }
+  },
+  "payee": { "email_address": "seller@juniperthread.example.com", "merchant_id": "JTCSANDBOX0001" },
+  "create_time": "2026-10-08T18:31:05Z",
+  "update_time": "2026-10-08T18:31:05Z",
+  "links": [
+    { "href": "https://api-m.sandbox.paypal.com/v2/payments/captures/7MS50287AX193722H", "rel": "self", "method": "GET" },
+    { "href": "https://api-m.sandbox.paypal.com/v2/payments/captures/7MS50287AX193722H/refund", "rel": "refund", "method": "POST" },
+    { "href": "https://api-m.sandbox.paypal.com/v2/checkout/orders/5O190127TN364715T", "rel": "up", "method": "GET" }
+  ]
+}

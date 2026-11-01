@@ -1,0 +1,231 @@
+{
+  "info": {
+    "_postman_id": "6c1d7a52-1f0e-4b7d-9d8e-2b9b8a4f6d10",
+    "name": "DisputeDefender (PayPal sandbox)",
+    "description": "Every PayPal call DisputeDefender makes, so judges can replay them. Run 'OAuth token' first; its test script stores {{access_token}}. Sandbox only.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "OAuth token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('token issued', () => pm.expect(body.access_token).to.be.a('string'));",
+                  "pm.environment.set('access_token', body.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                { "key": "username", "value": "{{client_id}}", "type": "string" },
+                { "key": "password", "value": "{{client_secret}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [{ "key": "grant_type", "value": "client_credentials", "type": "text" }]
+            },
+            "url": { "raw": "{{base_url}}/v1/oauth2/token", "host": ["{{base_url}}"], "path": ["v1", "oauth2", "token"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Disputes",
+      "item": [
+        {
+          "name": "List disputes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/customer/disputes?page_size=50&update_time_after={{update_time_after}}",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "customer", "disputes"],
+              "query": [
+                { "key": "page_size", "value": "50" },
+                { "key": "update_time_after", "value": "{{update_time_after}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Show dispute",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/customer/disputes/{{dispute_id}}", "host": ["{{base_url}}"], "path": ["v1", "customer", "disputes", "{{dispute_id}}"] }
+          }
+        },
+        {
+          "name": "Provide evidence (multipart)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "input",
+                  "value": "{\"evidences\":[{\"evidence_type\":\"PROOF_OF_FULFILLMENT\",\"evidence_info\":{\"tracking_info\":[{\"carrier_name\":\"USPS\",\"tracking_number\":\"{{tracking_number}}\"}]},\"notes\":\"Shipped with USPS tracking; see attached evidence packet.\",\"documents\":[{\"name\":\"evidence-{{dispute_id}}.pdf\"}]}]}",
+                  "contentType": "application/json",
+                  "type": "text"
+                },
+                {
+                  "key": "file1",
+                  "type": "file",
+                  "src": "data/static-evidence.pdf",
+                  "contentType": "application/pdf"
+                }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/v1/customer/disputes/{{dispute_id}}/provide-evidence", "host": ["{{base_url}}"], "path": ["v1", "customer", "disputes", "{{dispute_id}}", "provide-evidence"] }
+          }
+        },
+        {
+          "name": "Accept claim",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"note\": \"We are refunding this order in full.\",\n  \"accept_claim_type\": \"REFUND\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/customer/disputes/{{dispute_id}}/accept-claim", "host": ["{{base_url}}"], "path": ["v1", "customer", "disputes", "{{dispute_id}}", "accept-claim"] }
+          }
+        },
+        {
+          "name": "Make offer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"note\": \"We'd like to offer a partial refund and you keep the item.\",\n  \"offer_amount\": { \"currency_code\": \"USD\", \"value\": \"26.40\" },\n  \"offer_type\": \"REFUND\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/customer/disputes/{{dispute_id}}/make-offer", "host": ["{{base_url}}"], "path": ["v1", "customer", "disputes", "{{dispute_id}}", "make-offer"] }
+          }
+        },
+        {
+          "name": "Send message (multipart)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "input", "value": "{\"message\":\"Thanks for reaching out. We have attached tracking details to this case.\"}", "contentType": "application/json", "type": "text" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/v1/customer/disputes/{{dispute_id}}/send-message", "host": ["{{base_url}}"], "path": ["v1", "customer", "disputes", "{{dispute_id}}", "send-message"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sandbox lifecycle",
+      "item": [
+        {
+          "name": "Require evidence (sandbox only)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"action\": \"SELLER_EVIDENCE\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/customer/disputes/{{dispute_id}}/require-evidence", "host": ["{{base_url}}"], "path": ["v1", "customer", "disputes", "{{dispute_id}}", "require-evidence"] }
+          }
+        },
+        {
+          "name": "Adjudicate (sandbox only)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"adjudication_outcome\": \"SELLER_FAVOR\"\n}" },
+            "url": { "raw": "{{base_url}}/v1/customer/disputes/{{dispute_id}}/adjudicate", "host": ["{{base_url}}"], "path": ["v1", "customer", "disputes", "{{dispute_id}}", "adjudicate"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments & orders",
+      "item": [
+        {
+          "name": "Get capture",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v2/payments/captures/{{capture_id}}", "host": ["{{base_url}}"], "path": ["v2", "payments", "captures", "{{capture_id}}"] }
+          }
+        },
+        {
+          "name": "Get order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v2/checkout/orders/{{order_id}}", "host": ["{{base_url}}"], "path": ["v2", "checkout", "orders", "{{order_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tracking",
+      "item": [
+        {
+          "name": "Add tracking (trackers-batch)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"trackers\": [\n    {\n      \"transaction_id\": \"{{capture_id}}\",\n      \"tracking_number\": \"{{tracking_number}}\",\n      \"status\": \"SHIPPED\",\n      \"carrier\": \"USPS\"\n    }\n  ]\n}" },
+            "url": { "raw": "{{base_url}}/v1/shipping/trackers-batch", "host": ["{{base_url}}"], "path": ["v1", "shipping", "trackers-batch"] }
+          }
+        },
+        {
+          "name": "Get tracker",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/shipping/trackers/{{capture_id}}-{{tracking_number}}", "host": ["{{base_url}}"], "path": ["v1", "shipping", "trackers", "{{capture_id}}-{{tracking_number}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Register webhook",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"url\": \"{{public_base_url}}/api/webhooks/paypal\",\n  \"event_types\": [\n    { \"name\": \"CUSTOMER.DISPUTE.CREATED\" },\n    { \"name\": \"CUSTOMER.DISPUTE.UPDATED\" },\n    { \"name\": \"CUSTOMER.DISPUTE.RESOLVED\" }\n  ]\n}" },
+            "url": { "raw": "{{base_url}}/v1/notifications/webhooks", "host": ["{{base_url}}"], "path": ["v1", "notifications", "webhooks"] }
+          }
+        },
+        {
+          "name": "Verify webhook signature",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"auth_algo\": \"SHA256withRSA\",\n  \"cert_url\": \"{{cert_url}}\",\n  \"transmission_id\": \"{{transmission_id}}\",\n  \"transmission_sig\": \"{{transmission_sig}}\",\n  \"transmission_time\": \"{{transmission_time}}\",\n  \"webhook_id\": \"{{webhook_id}}\",\n  \"webhook_event\": {{webhook_event_raw}}\n}" },
+            "url": { "raw": "{{base_url}}/v1/notifications/verify-webhook-signature", "host": ["{{base_url}}"], "path": ["v1", "notifications", "verify-webhook-signature"] }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "https://api-m.sandbox.paypal.com" },
+    { "key": "access_token", "value": "" },
+    { "key": "dispute_id", "value": "" }
+  ]
+}

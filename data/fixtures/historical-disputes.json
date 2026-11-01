@@ -1,0 +1,323 @@
+{
+  "source": "fixture",
+  "note": "Fixture dispute history for the pattern miner. Every buyer, address and message is fictional. Rows load with source='fixture', show a 'Fixture history' badge, and every PayPal-mutating route rejects them with 422.",
+  "disputes": [
+    {
+      "id": "PP-D-FX-1001",
+      "reason": "MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED",
+      "stage": "CHARGEBACK",
+      "status": "RESOLVED",
+      "outcome": "RESOLVED_BUYER_FAVOUR",
+      "amount_cents": 8800,
+      "currency": "USD",
+      "sku": "JT-114",
+      "created_at": "2026-05-12T14:20:00.000Z",
+      "updated_at": "2026-05-29T10:00:00.000Z",
+      "order": {
+        "id": "FX-ORD-1001",
+        "capture_id": "FX-CAP-1001",
+        "buyer_name": "Priya Lindqvist",
+        "buyer_email": "priya.lindqvist@example.com",
+        "ship_to": { "name": "Priya Lindqvist", "address_line_1": "41 Alder Row", "admin_area_2": "Burlington", "admin_area_1": "VT", "postal_code": "05401", "country_code": "US" },
+        "captured_at": "2026-05-01T18:02:00.000Z",
+        "tracking_number": null,
+        "carrier": null,
+        "tracker_status": null
+      },
+      "messages": [
+        { "id": "FX-1001-M1", "posted_by": "BUYER", "time_posted": "2026-05-12T14:20:00.000Z", "content": "I ordered my usual medium and the dress is at least two sizes too small across the chest. The size chart does not match what arrived." },
+        { "id": "FX-1001-M2", "posted_by": "SELLER", "time_posted": "2026-05-13T09:05:00.000Z", "content": "I'm sorry the fit is off. Could you send the chest measurement you took? We can exchange it under our returns policy." }
+      ]
+    },
+    {
+      "id": "PP-D-FX-1002",
+      "reason": "MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED",
+      "stage": "CHARGEBACK",
+      "status": "RESOLVED",
+      "outcome": "RESOLVED_BUYER_FAVOUR",
+      "amount_cents": 8800,
+      "currency": "USD",
+      "sku": "JT-114",
+      "created_at": "2026-06-03T21:11:00.000Z",
+      "updated_at": "2026-06-19T12:30:00.000Z",
+      "order": {
+        "id": "FX-ORD-1002",
+        "capture_id": "FX-CAP-1002",
+        "buyer_name": "Hollis Ferreira",
+        "buyer_email": "hollis.ferreira@example.com",
+        "ship_to": { "name": "Hollis Ferreira", "address_line_1": "908 Quarry Ln", "admin_area_2": "Madison", "admin_area_1": "WI", "postal_code": "53703", "country_code": "US" },
+        "captured_at": "2026-05-24T16:40:00.000Z",
+        "tracking_number": null,
+        "carrier": null,
+        "tracker_status": null
+      },
+      "messages": [
+        { "id": "FX-1002-M1", "posted_by": "BUYER", "time_posted": "2026-06-03T21:11:00.000Z", "content": "The waist ties sit way above my waist and the length is much shorter than the listing photo. It runs small, nothing like the size chart." }
+      ]
+    },
+    {
+      "id": "PP-D-FX-1003",
+      "reason": "MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED",
+      "stage": "CHARGEBACK",
+      "status": "RESOLVED",
+      "outcome": "RESOLVED_SELLER_FAVOUR",
+      "amount_cents": 8800,
+      "currency": "USD",
+      "sku": "JT-114",
+      "created_at": "2026-06-21T13:45:00.000Z",
+      "updated_at": "2026-07-08T09:15:00.000Z",
+      "order": {
+        "id": "FX-ORD-1003",
+        "capture_id": "FX-CAP-1003",
+        "buyer_name": "Teodora Banks",
+        "buyer_email": "teodora.banks@example.com",
+        "ship_to": { "name": "Teodora Banks", "address_line_1": "17 Wren St", "admin_area_2": "Providence", "admin_area_1": "RI", "postal_code": "02906", "country_code": "US" },
+        "captured_at": "2026-06-10T19:25:00.000Z",
+        "tracking_number": null,
+        "carrier": null,
+        "tracker_status": null
+      },
+      "messages": [
+        { "id": "FX-1003-M1", "posted_by": "BUYER", "time_posted": "2026-06-21T13:45:00.000Z", "content": "The color is a gray-green, not the sage shown on the product page." },
+        { "id": "FX-1003-M2", "posted_by": "SELLER", "time_posted": "2026-06-21T20:10:00.000Z", "content": "Thanks for the photo. Linen takes dye slightly differently by batch, as noted on the listing. Happy to take a return within 30 days." }
+      ]
+    },
+    {
+      "id": "PP-D-FX-1004",
+      "reason": "MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED",
+      "stage": "CHARGEBACK",
+      "status": "RESOLVED",
+      "outcome": "RESOLVED_BUYER_FAVOUR",
+      "amount_cents": 8800,
+      "currency": "USD",
+      "sku": "JT-114",
+      "created_at": "2026-07-14T17:02:00.000Z",
+      "updated_at": "2026-07-31T11:45:00.000Z",
+      "order": {
+        "id": "FX-ORD-1004",
+        "capture_id": "FX-CAP-1004",
+        "buyer_name": "Wen Castellano",
+        "buyer_email": "wen.castellano@example.com",
+        "ship_to": { "name": "Wen Castellano", "address_line_1": "2650 Larkspur Ave", "admin_area_2": "Sacramento", "admin_area_1": "CA", "postal_code": "95818", "country_code": "US" },
+        "captured_at": "2026-07-02T15:18:00.000Z",
+        "tracking_number": null,
+        "carrier": null,
+        "tracker_status": null
+      },
+      "messages": [
+        { "id": "FX-1004-M1", "posted_by": "BUYER", "time_posted": "2026-07-14T17:02:00.000Z", "content": "Ordered a large based on your measurements and it fits like a small. The sizing is wrong and the wrap will not close." }
+      ]
+    },
+    {
+      "id": "PP-D-FX-1005",
+      "reason": "MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED",
+      "stage": "CHARGEBACK",
+      "status": "RESOLVED",
+      "outcome": "RESOLVED_SELLER_FAVOUR",
+      "amount_cents": 8800,
+      "currency": "USD",
+      "sku": "JT-114",
+      "created_at": "2026-08-02T10:30:00.000Z",
+      "updated_at": "2026-08-20T16:00:00.000Z",
+      "order": {
+        "id": "FX-ORD-1005",
+        "capture_id": "FX-CAP-1005",
+        "buyer_name": "Rosalind Achebe",
+        "buyer_email": "rosalind.achebe@example.com",
+        "ship_to": { "name": "Rosalind Achebe", "address_line_1": "33 Juniper Ct", "admin_area_2": "Ann Arbor", "admin_area_1": "MI", "postal_code": "48104", "country_code": "US" },
+        "captured_at": "2026-07-22T13:50:00.000Z",
+        "tracking_number": null,
+        "carrier": null,
+        "tracker_status": null
+      },
+      "messages": [
+        { "id": "FX-1005-M1", "posted_by": "BUYER", "time_posted": "2026-08-02T10:30:00.000Z", "content": "The linen is thinner than I expected and already pilling at the seams after one wash." },
+        { "id": "FX-1005-M2", "posted_by": "SELLER", "time_posted": "2026-08-02T18:40:00.000Z", "content": "I'm sorry to hear that. Please send it back within 30 days and we will refund once it arrives." }
+      ]
+    },
+    {
+      "id": "PP-D-FX-1006",
+      "reason": "MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED",
+      "stage": "CHARGEBACK",
+      "status": "RESOLVED",
+      "outcome": "RESOLVED_BUYER_FAVOUR",
+      "amount_cents": 8800,
+      "currency": "USD",
+      "sku": "JT-114",
+      "created_at": "2026-08-27T19:55:00.000Z",
+      "updated_at": "2026-09-12T08:20:00.000Z",
+      "order": {
+        "id": "FX-ORD-1006",
+        "capture_id": "FX-CAP-1006",
+        "buyer_name": "Ines Marchetti",
+        "buyer_email": "ines.marchetti@example.com",
+        "ship_to": { "name": "Ines Marchetti", "address_line_1": "5120 Bluff Rd", "admin_area_2": "Columbus", "admin_area_1": "OH", "postal_code": "43214", "country_code": "US" },
+        "captured_at": "2026-08-15T12:05:00.000Z",
+        "tracking_number": null,
+        "carrier": null,
+        "tracker_status": null
+      },
+      "messages": [
+        { "id": "FX-1006-M1", "posted_by": "BUYER", "time_posted": "2026-08-27T19:55:00.000Z", "content": "Too tight in the shoulders and the hips. I measured myself against your size chart before ordering and it still doesn't fit." }
+      ]
+    },
+    {
+      "id": "PP-D-FX-1007",
+      "reason": "MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED",
+      "stage": "CHARGEBACK",
+      "status": "RESOLVED",
+      "outcome": "RESOLVED_SELLER_FAVOUR",
+      "amount_cents": 3600,
+      "currency": "USD",
+      "sku": "JT-108",
+      "created_at": "2026-06-10T15:00:00.000Z",
+      "updated_at": "2026-06-26T10:10:00.000Z",
+      "order": {
+        "id": "FX-ORD-1007",
+        "capture_id": "FX-CAP-1007",
+        "buyer_name": "Caspian Otieno",
+        "buyer_email": "caspian.otieno@example.com",
+        "ship_to": { "name": "Caspian Otieno", "address_line_1": "88 Harbor View Dr", "admin_area_2": "Norfolk", "admin_area_1": "VA", "postal_code": "23510", "country_code": "US" },
+        "captured_at": "2026-05-30T17:30:00.000Z",
+        "tracking_number": null,
+        "carrier": null,
+        "tracker_status": null
+      },
+      "messages": [
+        { "id": "FX-1007-M1", "posted_by": "BUYER", "time_posted": "2026-06-10T15:00:00.000Z", "content": "The tee is a pinkish brown, the photo shows a terracotta orange." },
+        { "id": "FX-1007-M2", "posted_by": "SELLER", "time_posted": "2026-06-10T22:15:00.000Z", "content": "Our tees are garment-dyed, so shades vary by batch as the listing says. We're happy to accept a return." }
+      ]
+    },
+    {
+      "id": "PP-D-FX-1008",
+      "reason": "MERCHANDISE_OR_SERVICE_NOT_RECEIVED",
+      "stage": "INQUIRY",
+      "status": "RESOLVED",
+      "outcome": "RESOLVED_SELLER_FAVOUR",
+      "amount_cents": 12800,
+      "currency": "USD",
+      "sku": "JT-101",
+      "created_at": "2026-09-30T12:40:00.000Z",
+      "updated_at": "2026-10-08T09:30:00.000Z",
+      "order": {
+        "id": "FX-ORD-1008",
+        "capture_id": "FX-CAP-1008",
+        "buyer_name": "Ansel Marwick",
+        "buyer_email": "ansel.marwick@example.com",
+        "ship_to": { "name": "Ansel Marwick", "address_line_1": "12 Fore St", "admin_area_2": "Portland", "admin_area_1": "ME", "postal_code": "04101", "country_code": "US" },
+        "captured_at": "2026-09-21T14:15:00.000Z",
+        "tracking_number": "9400111899223344556714",
+        "carrier": "USPS",
+        "tracker_status": "DELIVERED"
+      },
+      "messages": [
+        { "id": "FX-1008-M1", "posted_by": "BUYER", "time_posted": "2026-09-30T12:40:00.000Z", "content": "It's been over a week and my jacket still hasn't shown up. Where is it?" },
+        { "id": "FX-1008-M2", "posted_by": "SELLER", "time_posted": "2026-09-30T16:05:00.000Z", "content": "Tracking shows it was delivered to your front porch. Could you check with neighbors?" }
+      ]
+    },
+    {
+      "id": "PP-D-FX-1009",
+      "reason": "MERCHANDISE_OR_SERVICE_NOT_RECEIVED",
+      "stage": "CHARGEBACK",
+      "status": "RESOLVED",
+      "outcome": "RESOLVED_SELLER_FAVOUR",
+      "amount_cents": 14800,
+      "currency": "USD",
+      "sku": "JT-117",
+      "created_at": "2026-07-30T18:20:00.000Z",
+      "updated_at": "2026-08-14T13:00:00.000Z",
+      "order": {
+        "id": "FX-ORD-1009",
+        "capture_id": "FX-CAP-1009",
+        "buyer_name": "Delphine Okafor",
+        "buyer_email": "delphine.okafor@example.com",
+        "ship_to": { "name": "Delphine Okafor", "address_line_1": "3400 Gilpin St", "admin_area_2": "Denver", "admin_area_1": "CO", "postal_code": "80205", "country_code": "US" },
+        "captured_at": "2026-07-18T20:00:00.000Z",
+        "tracking_number": "9405511899223344556707",
+        "carrier": "USPS",
+        "tracker_status": "DELIVERED"
+      },
+      "messages": [
+        { "id": "FX-1009-M1", "posted_by": "BUYER", "time_posted": "2026-07-30T18:20:00.000Z", "content": "The quilt never arrived and it's been almost two weeks. Shipping was very slow." }
+      ]
+    },
+    {
+      "id": "PP-D-FX-1010",
+      "reason": "MERCHANDISE_OR_SERVICE_NOT_RECEIVED",
+      "stage": "CHARGEBACK",
+      "status": "RESOLVED",
+      "outcome": "RESOLVED_BUYER_FAVOUR",
+      "amount_cents": 3400,
+      "currency": "USD",
+      "sku": "JT-105",
+      "created_at": "2026-08-19T09:10:00.000Z",
+      "updated_at": "2026-09-03T15:40:00.000Z",
+      "order": {
+        "id": "FX-ORD-1010",
+        "capture_id": "FX-CAP-1010",
+        "buyer_name": "Bram Kowalczyk",
+        "buyer_email": "bram.kowalczyk@example.com",
+        "ship_to": { "name": "Bram Kowalczyk", "address_line_1": "702 Elm Terrace", "admin_area_2": "Duluth", "admin_area_1": "MN", "postal_code": "55805", "country_code": "US" },
+        "captured_at": "2026-08-02T11:30:00.000Z",
+        "tracking_number": null,
+        "carrier": null,
+        "tracker_status": null
+      },
+      "messages": [
+        { "id": "FX-1010-M1", "posted_by": "BUYER", "time_posted": "2026-08-19T09:10:00.000Z", "content": "Nothing has arrived and I never got a tracking number. Very late delivery for a hat." }
+      ]
+    },
+    {
+      "id": "PP-D-FX-1011",
+      "reason": "UNAUTHORISED",
+      "stage": "CHARGEBACK",
+      "status": "RESOLVED",
+      "outcome": "RESOLVED_SELLER_FAVOUR",
+      "amount_cents": 11200,
+      "currency": "USD",
+      "sku": "JT-119",
+      "created_at": "2026-09-08T22:30:00.000Z",
+      "updated_at": "2026-09-25T10:00:00.000Z",
+      "order": {
+        "id": "FX-ORD-1011",
+        "capture_id": "FX-CAP-1011",
+        "buyer_name": "Juno Halvorsen",
+        "buyer_email": "juno.halvorsen@example.com",
+        "ship_to": { "name": "Juno Halvorsen", "address_line_1": "1415 Oakland Ave", "admin_area_2": "Austin", "admin_area_1": "TX", "postal_code": "78704", "country_code": "US" },
+        "captured_at": "2026-08-28T13:12:00.000Z",
+        "tracking_number": "9400111899223344556721",
+        "carrier": "USPS",
+        "tracker_status": "DELIVERED"
+      },
+      "messages": [
+        { "id": "FX-1011-M1", "posted_by": "BUYER", "time_posted": "2026-09-08T22:30:00.000Z", "content": "I don't recognize this charge from Juniper Thread Co. on my account." }
+      ]
+    },
+    {
+      "id": "PP-D-FX-1012",
+      "reason": "UNAUTHORISED",
+      "stage": "CHARGEBACK",
+      "status": "RESOLVED",
+      "outcome": "RESOLVED_BUYER_FAVOUR",
+      "amount_cents": 7200,
+      "currency": "USD",
+      "sku": "JT-111",
+      "created_at": "2026-09-15T07:45:00.000Z",
+      "updated_at": "2026-10-01T14:25:00.000Z",
+      "order": {
+        "id": "FX-ORD-1012",
+        "capture_id": "FX-CAP-1012",
+        "buyer_name": "Silas Nakamura",
+        "buyer_email": "silas.nakamura@example.com",
+        "ship_to": { "name": "Silas Nakamura", "address_line_1": "260 Ponce Ave", "admin_area_2": "Atlanta", "admin_area_1": "GA", "postal_code": "30307", "country_code": "US" },
+        "captured_at": "2026-09-03T08:55:00.000Z",
+        "tracking_number": null,
+        "carrier": null,
+        "tracker_status": null
+      },
+      "messages": [
+        { "id": "FX-1012-M1", "posted_by": "BUYER", "time_posted": "2026-09-15T07:45:00.000Z", "content": "This payment was not made by me. I have never ordered from this shop." }
+      ]
+    }
+  ]
+}
