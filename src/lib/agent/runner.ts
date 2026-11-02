@@ -250,7 +250,12 @@ function finalEvidencePlan(ctx: AgentContext, log: StepLogger, plan: EvidencePla
   return out;
 }
 
-export async function runAgent(runId: string): Promise<void> {
+export interface RunAgentOptions {
+  /** Test seam: supply the model (a scripted fake). Production passes nothing. */
+  model?: (ctx: AgentContext) => ModelFn;
+}
+
+export async function runAgent(runId: string, opts: RunAgentOptions = {}): Promise<void> {
   const env = getEnv();
   const run = getRun(runId);
   if (!run) throw new Error(`Run ${runId} not found.`);
@@ -260,7 +265,7 @@ export async function runAgent(runId: string): Promise<void> {
   markRunStarted(runId);
   emitStatus(runId, { status: 'running' });
   const log = stepLogger(runId);
-  const mock = isAnthropicMock();
+  const mock = isAnthropicMock() && !opts.model;
   log('info', `Agent run started for ${dispute.id} (${dispute.reason})`, {
     dispute_id: dispute.id,
     reason: dispute.reason,
@@ -270,7 +275,7 @@ export async function runAgent(runId: string): Promise<void> {
   if (mock) log('info', 'ANTHROPIC_MOCK=1: scripted agent, for tests and CI only. Not model output.');
 
   const ctx = createAgentContext(runId, dispute);
-  const model: ModelFn = mock ? createMockModel(ctx) : createMessage;
+  const model: ModelFn = opts.model ? opts.model(ctx) : mock ? createMockModel(ctx) : createMessage;
 
   const analysis = await investigate(ctx, model, log);
 
