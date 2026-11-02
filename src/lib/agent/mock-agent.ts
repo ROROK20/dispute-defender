@@ -177,7 +177,12 @@ function draft(ctx: AgentContext): SubmitAnalysis {
     if (group === 'UNAUTHORISED' && prior && prior.count > 0) {
       letter.add(`This PayPal buyer account has ${prior.count} earlier order(s) with our store that were not disputed.`, prior.source_ids);
     }
-    letter.add('We ask that this case be decided in our favor based on the shipping and delivery records above.', [d?.source_key]);
+    letter.add(
+      delivered
+        ? 'We ask that this case be decided in our favor based on the shipping and delivery records above.'
+        : 'We have shared the order records we hold for this purchase and ask that the case be reviewed with them.',
+      [d?.source_key],
+    );
   }
 
   if (letter.sentences.length === 0) {

@@ -350,7 +350,7 @@ Runtime: **Node.js 22.20.0 LTS** (`.nvmrc`: `22.20.0`). Package manager: npm 10.
 - AG Grid v34: call `ModuleRegistry.registerModules([AllCommunityModule])` once in `src/components/grid/DisputeGrid.tsx` (module scope). Theme via `themeQuartz.withParams({...})` in `gridTheme.ts`. Do **not** import CSS files from AG Grid (Theming API). Do **not** import `ag-grid-enterprise`.
 - Tailwind v4: `globals.css` starts with `@import "tailwindcss";` and has an `@theme` block with design tokens. `postcss.config.mjs` uses `{ plugins: { '@tailwindcss/postcss': {} } }`.
 - Visual system: one typeface (Inter via `next/font/google`), one accent (`--color-accent: #0f766e`, teal), status colors limited to amber (due soon), red (overdue or lost) and green (won or submitted).
-- Anthropic: models come from env. Defaults are `claude-sonnet-5-5` (agent loop, pattern tagging) and `claude-opus-5-5` (review pass only). `max_tokens: 4096` for the agent and `2048` for review. `temperature: 0`.
+- Anthropic: models come from env. Defaults are `claude-sonnet-5-5` (agent loop, pattern tagging) and `claude-opus-5-5` (review pass only). `max_tokens: 16000` for the agent and `8000` for review. No `temperature` (current models reject non-default sampling) and `tool_choice: auto` only (forced tool choice is rejected); thinking depth is set with `output_config.effort`.
 - `package.json` scripts: `dev` (`next dev`), `build` (`next build`), `start` (`next start -p ${PORT:-3000}`), `setup` (`tsx scripts/setup.ts`), `seed` (`tsx scripts/seed-store.ts`), `sync` (`tsx scripts/sync-disputes.ts`), `webhook:register`, `smoke:evidence`, `lint`, `typecheck` (`tsc --noEmit`), `test` (`vitest run`), `test:e2e` (`playwright test`).
 
 ---
@@ -593,7 +593,7 @@ The handler: (1) `await req.text()`; (2) verify through `POST /v1/notifications/
 | `get_sku` | `{sku}` | SKU description and size-chart version |
 | `score_evidence` | `{}` | Runs `strength.ts` over the sources collected so far (deterministic) |
 | `compute_expected_value` | `{}` | Runs `expected-value.ts` (deterministic) |
-| `submit_analysis` | Schema below | Terminal tool. Forced through `tool_choice:{type:'tool',name:'submit_analysis'}` when the loop hits 10 iterations |
+| `submit_analysis` | Schema below | Terminal tool. Current Sonnet/Opus models reject forced `tool_choice`, so it is requested in the prompt with `tool_choice:auto`; at turn 10 (or 70 s) the runner appends a "submit now" instruction. A malformed call is returned to the model with the zod errors |
 
 The `submit_analysis` input is validated with zod in `schemas.ts`:
 

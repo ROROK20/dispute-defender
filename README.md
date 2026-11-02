@@ -35,7 +35,7 @@ The stopwatch in the UI shows **measured** elapsed times only:
 ### The core loop: a PayPal webhook leads to a cited draft, then seller approval, then `provide-evidence`
 - **Event-driven trigger.** The app receives `CUSTOMER.DISPUTE.CREATED / UPDATED / RESOLVED` webhooks and checks each one with PayPal's `verify-webhook-signature`, using the original raw JSON body (never re-serialized). Events that fail verification get `400` and are stored as unverified. Events are stored once each by event id, and the receiver returns `200` within about 1 s.
 - **Poller fallback.** Every 30 s the server lists disputes updated since the last sync. Any dispute in `WAITING_FOR_SELLER_RESPONSE` without a run gets one, so a slow webhook never stalls a dispute.
-- **Claude tool-use agent.** It uses read-only tools: `get_dispute`, `get_transaction`, `get_tracking`, `get_messages`, `get_policy`, `get_sku`, `score_evidence` and `compute_expected_value`, and finishes with a forced `submit_analysis` call whose output is validated with zod. Each tool result is stored as a numbered source (`S1…Sn`). The loop is limited to 12 model turns and 90 s of wall-clock time.
+- **Claude tool-use agent.** It uses read-only tools: `get_dispute`, `get_transaction`, `get_tracking`, `get_messages`, `get_policy`, `get_sku`, `score_evidence` and `compute_expected_value`, and finishes with a `submit_analysis` call whose output is validated with zod (a malformed call goes back to the model with the schema errors). Each tool result is stored as a numbered source (`S1…Sn`). The loop is limited to 12 model turns and 90 s of wall-clock time.
 - **Live agent trace.** Every step (tool call, result, check, decision) is written to the DB and streamed over Server-Sent Events to the dispute view as it happens.
 
 ### No unsupported claims
@@ -127,7 +127,7 @@ The full component breakdown, schema and API contract are in [`ARCHITECTURE.md`]
 | Layer | Technology |
 |---|---|
 | Payments platform | **PayPal Disputes API v1** (list/show, provide-evidence multipart, accept-claim, make-offer, send-message, sandbox-only require-evidence and adjudicate), **PayPal Webhooks** with `verify-webhook-signature`, **Orders v2 + Payments v2 captures**, **Checkout JS SDK** (`@paypal/react-paypal-js`), **Add Tracking API** (`/v1/shipping/trackers-batch`) |
-| AI | **Claude** through `@anthropic-ai/sdk`: **Claude Sonnet** for the agent loop and pattern tagging, **Claude Opus** for the reword-only review pass. Uses tool use with structured, zod-validated outputs and `temperature: 0` |
+| AI | **Claude** through `@anthropic-ai/sdk`: **Claude Sonnet** for the agent loop and pattern tagging, **Claude Opus** for the reword-only review pass. Uses tool use with zod-validated outputs; no sampling parameters (current models reject them) |
 | App | **Next.js 15** (App Router, route handlers, `instrumentation.ts`), **React 19**, **Tailwind CSS v4**, Server-Sent Events |
 | Grid | **AG Grid Community** v34 (`ag-grid-community`, `ag-grid-react`) |
 | PDF | **@react-pdf/renderer** |
@@ -141,6 +141,18 @@ Runtime: **Node.js 22.20.0** (`.nvmrc`), npm 10.x, with `package-lock.json` comm
 ---
 
 ## Setup
+
+### Quick look without credentials (mock mode)
+
+To see the whole loop without a PayPal sandbox app or an Anthropic key:
+
+```bash
+npm ci
+PAYPAL_MOCK=1 ANTHROPIC_MOCK=1 npm run setup
+PAYPAL_MOCK=1 ANTHROPIC_MOCK=1 npm run dev
+```
+
+PayPal calls are answered from `data/fixtures/mock-paypal`, and the agent is a **scripted stand-in**, not Claude: it calls the real tools in a fixed order and fills a template from the stored sources. The UI shows a red **MOCK MODE** banner the whole time. Use it to explore the screens; the real agent needs the credentials below.
 
 ### Prerequisites
 
@@ -274,6 +286,8 @@ Import `postman/DisputeDefender.postman_collection.json` and `postman/DisputeDef
 | **Claude Sonnet** (Anthropic Messages API, tool use) | `src/lib/agent/runner.ts`, `src/lib/patterns/mine.ts` | Runs the multi-step agent: calls read-only PayPal-backed tools, classifies the reason code, explains the deterministic score and EV result, and drafts sentences with source ids through the `submit_analysis` tool. Also tags buyer messages with themes from a closed list for pattern mining. |
 | **Claude Opus** | `src/lib/agent/review.ts` | Optional reword-only review of the final draft. It cannot add or remove sources, and its output is discarded if it fails the citation check. |
 
+**Development:** this codebase was written with AI coding assistance (Claude).
+
 **What the AI does not do:** it does not compute the strength score, the expected value, or the pattern counts. All three are deterministic code. It never calls a PayPal-mutating endpoint; those run only from seller-approved routes.
 
 ---
@@ -283,7 +297,7 @@ Import `postman/DisputeDefender.postman_collection.json` and `postman/DisputeDef
 - The strength score is a **rubric**, not a trained model, and we make no accuracy claims for it.
 - The fixture dispute history is fictional. It carries a badge in the UI, and every PayPal-mutating route rejects it with `422`.
 - The app has a single seller and no multi-seller auth. It runs in the sandbox only, and moving to production would need live PayPal credentials and review.
-- Evidence types allowed per reason code live in `src/lib/paypal/evidence-rules.ts` and were checked against the sandbox. That file is the single place to correct them.
+- Evidence types allowed per reason code live in `src/lib/paypal/evidence-rules.ts`. They follow PayPal's Disputes API documentation and still need confirming with a live sandbox `provide-evidence` call (`npm run smoke:evidence`). That file is the single place to correct them.
 
 ---
 
