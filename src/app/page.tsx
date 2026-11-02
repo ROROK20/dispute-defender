@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import DisputeGrid, { type DisputeRow } from '@/components/grid/DisputeGrid';
-import TriggerDemoButton from '@/components/TriggerDemoButton';
 
 function money(cents: number, currency = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
@@ -84,7 +83,6 @@ export default function InboxPage() {
           >
             {syncing ? 'Syncing…' : 'Sync from PayPal'}
           </button>
-          <TriggerDemoButton />
         </div>
       </div>
 
@@ -118,11 +116,9 @@ export default function InboxPage() {
           <h2 className="mb-2 text-lg font-semibold">No disputes yet</h2>
           <p className="mx-auto mb-5 max-w-md text-sm text-ink-muted">
             Disputes arrive by PayPal webhook or the 30-second poller. Open one from a sandbox buyer account
-            (see docs/sandbox-staging.md), or use a staged dispute from the demo pool.
+            (see docs/sandbox-staging.md), or use <strong>Trigger demo dispute</strong> at the top right to run a
+            staged dispute from the demo pool.
           </p>
-          <div className="flex justify-center">
-            <TriggerDemoButton />
-          </div>
         </div>
       )}
 

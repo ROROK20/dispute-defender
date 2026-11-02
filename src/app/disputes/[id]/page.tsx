@@ -72,6 +72,13 @@ function since(from: string, to: string | number) {
   return (typeof to === 'number' ? to : Date.parse(to)) - Date.parse(from);
 }
 
+/** 47h 10m under two days, 3d 4h beyond (the deadline badge on the inbox uses the same steps). */
+function dueSpan(ms: number): string {
+  const min = Math.floor(ms / 60e3);
+  const h = Math.floor(min / 60);
+  return h < 48 ? `${h}h ${min % 60}m` : `${Math.floor(h / 24)}d ${h % 24}h`;
+}
+
 type CitationFailureBody = { id: string; reason: string; token?: string };
 type ApiBody = {
   error?: { code?: string; message?: string; debug_id?: string; failures?: CitationFailureBody[]; details?: { failed?: CitationFailureBody[] } };
@@ -335,7 +342,7 @@ export default function DisputePage() {
         </div>
         {dueMs !== null && !resolved && (
           <div className={`rounded-md px-3 py-2 text-sm ${dueMs < 0 ? 'bg-lost-soft text-lost' : dueMs < 48 * 3600e3 ? 'bg-due-soon-soft text-due-soon' : 'bg-surface text-ink-muted ring-1 ring-line'}`}>
-            {dueMs < 0 ? 'Response overdue' : `Response due in ${Math.floor(dueMs / 3600e3)}h ${Math.floor((dueMs % 3600e3) / 60e3)}m`}
+            {dueMs < 0 ? 'Response overdue' : `Response due in ${dueSpan(dueMs)}`}
           </div>
         )}
       </div>
