@@ -76,6 +76,71 @@ function hateoas(href: string): Json {
   return { links: [{ href, rel: 'self', method: 'GET' }] };
 }
 
+/**
+ * Mock-only shipping details for the SNAD and UNAUTHORISED fixture disputes, so
+ * each mock capture resolves to an order built from its own dispute (SKU,
+ * amount, buyer) instead of the INR order. Tracking numbers point at entries
+ * in data/fixtures/carrier-events.json. The INR capture keeps order.json.
+ */
+const MOCK_SHIPPING: Record<string, { address: Json; tracking: string; email: string }> = {
+  '3TC66912BV448105W': {
+    address: { address_line_1: '3104 Bryant Ave S', admin_area_2: 'Minneapolis', admin_area_1: 'MN', postal_code: '55408', country_code: 'US' },
+    tracking: '9400111899223344556752',
+    email: 'buyer.snad@example.com',
+  },
+  '9GF13457QE820934M': {
+    address: { address_line_1: '2860 Gilpin St', admin_area_2: 'Denver', admin_area_1: 'CO', postal_code: '80205', country_code: 'US' },
+    tracking: '9405511899223344556707',
+    email: 'buyer.unauth@example.com',
+  },
+};
+
+function disputeForCapture(captureId: string): Json | null {
+  return (
+    allDisputes().find((d) =>
+      ((d.disputed_transactions as Json[] | undefined) ?? []).some((t) => t.seller_transaction_id === captureId),
+    ) ?? null
+  );
+}
+
+function mockOrderIdFor(captureId: string): string {
+  return `MOCKORDER${captureId.slice(0, 8)}`;
+}
+
+/** Order v2 shape for a fixture capture other than the INR one, or null to use order.json. */
+function orderForCapture(captureId: string): Json | null {
+  const ship = MOCK_SHIPPING[captureId];
+  const dispute = disputeForCapture(captureId);
+  if (!ship || !dispute) return null;
+  const tx = ((dispute.disputed_transactions as Json[])[0] ?? {}) as Json;
+  const item = (((tx.items as Json[] | undefined) ?? [])[0] ?? {}) as Json;
+  const amount = (tx.gross_amount ?? dispute.dispute_amount) as Json;
+  const buyer = String((tx.buyer as Json | undefined)?.name ?? 'Sandbox Buyer');
+  const [given, ...rest] = buyer.split(' ');
+  const created = String(tx.create_time ?? dispute.create_time ?? '');
+  return {
+    id: mockOrderIdFor(captureId),
+    intent: 'CAPTURE',
+    status: 'COMPLETED',
+    payer: { name: { given_name: given, surname: rest.join(' ') }, email_address: ship.email },
+    purchase_units: [
+      {
+        reference_id: item.item_id,
+        amount,
+        items: [{ name: item.item_name, sku: item.item_id, quantity: String(item.item_quantity ?? '1'), unit_amount: amount }],
+        shipping: {
+          name: { full_name: buyer },
+          address: ship.address,
+          trackers: [{ id: `${captureId}-${ship.tracking}`, status: 'SHIPPED', create_time: created, update_time: created }],
+        },
+        payments: { captures: [{ id: captureId, status: 'COMPLETED', amount, create_time: created, update_time: created }] },
+      },
+    ],
+    create_time: created,
+    update_time: created,
+  };
+}
+
 export async function mockPaypalRequest(req: MockRequest): Promise<MockResponse> {
   const method = req.method.toUpperCase();
   const [rawPath] = req.path.split('?');
@@ -131,7 +196,18 @@ export async function mockPaypalRequest(req: MockRequest): Promise<MockResponse>
   }
 
   if ((m = p.match(/^\/v2\/payments\/captures\/([^/]+)$/)) && method === 'GET') {
-    return ok({ ...loadFixture<Json>('capture.json'), id: decodeURIComponent(m[1]) });
+    const id = decodeURIComponent(m[1]);
+    const order = orderForCapture(id);
+    if (!order) return ok({ ...loadFixture<Json>('capture.json'), id });
+    const unit = (order.purchase_units as Json[])[0];
+    return ok({
+      ...loadFixture<Json>('capture.json'),
+      id,
+      amount: unit.amount,
+      create_time: order.create_time,
+      update_time: order.update_time,
+      supplementary_data: { related_ids: { order_id: order.id } },
+    });
   }
 
   if (method === 'POST' && p === '/v2/checkout/orders') {
@@ -145,7 +221,10 @@ export async function mockPaypalRequest(req: MockRequest): Promise<MockResponse>
   }
 
   if ((m = p.match(/^\/v2\/checkout\/orders\/([^/]+)$/)) && method === 'GET') {
-    return ok({ ...loadFixture<Json>('order.json'), id: decodeURIComponent(m[1]) });
+    const orderId = decodeURIComponent(m[1]);
+    const capture = Object.keys(MOCK_SHIPPING).find((c) => mockOrderIdFor(c) === orderId);
+    const built = capture ? orderForCapture(capture) : null;
+    return ok(built ?? { ...loadFixture<Json>('order.json'), id: orderId });
   }
 
   if (method === 'POST' && p === '/v1/shipping/trackers-batch') {
@@ -165,7 +244,16 @@ export async function mockPaypalRequest(req: MockRequest): Promise<MockResponse>
     const dash = trackerId.indexOf('-');
     const tracker = loadFixture<Json>('tracker.json');
     if (dash <= 0 || dash === trackerId.length - 1) return ok(tracker);
-    return ok({ ...tracker, transaction_id: trackerId.slice(0, dash), tracking_number: trackerId.slice(dash + 1) });
+    const transactionId = trackerId.slice(0, dash);
+    const trackingNumber = trackerId.slice(dash + 1);
+    const ship = MOCK_SHIPPING[transactionId];
+    const shipped = ship ? String(orderForCapture(transactionId)?.create_time ?? '').slice(0, 10) : null;
+    return ok({
+      ...tracker,
+      transaction_id: transactionId,
+      tracking_number: trackingNumber,
+      ...(shipped ? { shipment_date: shipped } : {}),
+    });
   }
 
   return notFound(`${method} ${p}`);
