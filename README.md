@@ -34,7 +34,7 @@ The stopwatch in the UI shows **measured** elapsed times only:
 
 ### The core loop: a PayPal webhook leads to a cited draft, then seller approval, then `provide-evidence`
 - **Event-driven trigger.** The app receives `CUSTOMER.DISPUTE.CREATED / UPDATED / RESOLVED` webhooks and checks each one with PayPal's `verify-webhook-signature`, using the original raw JSON body (never re-serialized). Events that fail verification get `400` and are stored as unverified. Events are stored once each by event id, and the receiver returns `200` within about 1 s.
-- **Poller fallback.** Every 30 s the server lists disputes updated since the last sync. Any dispute in `WAITING_FOR_SELLER_RESPONSE` without a run gets one, so a slow webhook never stalls a dispute.
+- **Poller fallback.** Every 30 s the server lists disputes updated since the last sync. A dispute that first appears while the server is running, is in `WAITING_FOR_SELLER_RESPONSE` and has no run gets one, so a slow webhook never stalls a new dispute. Disputes already staged when the server boots are left for the demo trigger, and any dispute can be run from its page.
 - **Claude tool-use agent.** It uses read-only tools: `get_dispute`, `get_transaction`, `get_tracking`, `get_messages`, `get_policy`, `get_sku`, `score_evidence` and `compute_expected_value`, and finishes with a `submit_analysis` call whose output is validated with zod (a malformed call goes back to the model with the schema errors). Each tool result is stored as a numbered source (`S1…Sn`). The loop is limited to 12 model turns and 90 s of wall-clock time.
 - **Live agent trace.** Every step (tool call, result, check, decision) is written to the DB and streamed over Server-Sent Events to the dispute view as it happens.
 

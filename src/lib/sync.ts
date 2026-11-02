@@ -169,16 +169,29 @@ export function ensureRunForWaitingDispute(
   }
 }
 
+export interface SyncOptions {
+  /**
+   * Start an agent run for disputes that first appear while this process is
+   * running (the poller, C4). Off for one-shot syncs (setup, CLI, the manual
+   * sync route): a script's process exits and would orphan the run.
+   */
+  autoRun?: boolean;
+}
+
 const g = globalThis as unknown as {
   __ddSyncCursor?: string;
+  __ddSyncSeeded?: boolean;
   __ddSyncInFlight?: Promise<SyncResult> | null;
   __ddPollerStarted?: boolean;
   __ddPollerTimer?: ReturnType<typeof setInterval>;
 };
 
-async function doSync(): Promise<SyncResult> {
+async function doSync(opts: SyncOptions): Promise<SyncResult> {
   const passStartedAt = Date.now();
   const cursor = g.__ddSyncCursor;
+  // The first pass of a process only seeds: disputes already staged when the
+  // server boots stay in the demo-trigger pool (C13) instead of being run here.
+  const seeding = !g.__ddSyncSeeded;
   const summaries = asDisputeList(await listDisputes(cursor ? { updateTimeAfter: cursor } : {}));
   const db = getDb();
 
@@ -195,21 +208,24 @@ async function doSync(): Promise<SyncResult> {
         await syncDispute(summary.dispute_id);
       }
       synced++;
-      const runId = ensureRunForWaitingDispute(summary.dispute_id, "poll");
-      if (runId) newRuns.push(runId);
+      if (opts.autoRun && !seeding && !stored) {
+        const runId = ensureRunForWaitingDispute(summary.dispute_id, "poll");
+        if (runId) newRuns.push(runId);
+      }
     } catch (err) {
       console.warn(`[sync] dispute ${summary.dispute_id} failed:`, err instanceof Error ? err.message : err);
     }
   }
 
   g.__ddSyncCursor = new Date(passStartedAt - 60_000).toISOString();
+  g.__ddSyncSeeded = true;
   return { synced, new_runs: newRuns };
 }
 
 /** Pulls disputes changed since the last pass. Concurrent callers share one pass. */
-export function syncDisputes(): Promise<SyncResult> {
+export function syncDisputes(opts: SyncOptions = {}): Promise<SyncResult> {
   if (g.__ddSyncInFlight) return g.__ddSyncInFlight;
-  const p = doSync().finally(() => {
+  const p = doSync(opts).finally(() => {
     g.__ddSyncInFlight = null;
   });
   g.__ddSyncInFlight = p;
@@ -218,6 +234,7 @@ export function syncDisputes(): Promise<SyncResult> {
 
 export function resetSyncCursor(): void {
   g.__ddSyncCursor = undefined;
+  g.__ddSyncSeeded = undefined;
 }
 
 /** Background poller (C4); started once per process from instrumentation.ts. */
@@ -233,7 +250,7 @@ export function startPoller(): void {
   const interval = getEnv().POLL_INTERVAL_MS;
   const tick = async () => {
     try {
-      const res = await syncDisputes();
+      const res = await syncDisputes({ autoRun: true });
       if (res.new_runs.length > 0) {
         console.info(`[sync] poll synced ${res.synced} dispute(s), started ${res.new_runs.length} run(s)`);
       }
