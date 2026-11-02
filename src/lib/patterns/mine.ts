@@ -321,15 +321,18 @@ function claudeTagger(): Tagger {
         '',
         'Messages (JSON):',
         JSON.stringify(batch.map((m) => ({ message_ref: m.message_ref, text: m.text }))),
+        '',
+        'Return the result by calling the tag_messages tool, with one entry per message.',
       ].join('\n');
 
       try {
+        // Current Sonnet/Opus models reject forced tool_choice and sampling
+        // parameters, so the tool is requested in the prompt instead.
         const resp = await client.messages.create({
           model,
-          max_tokens: 4096,
-          temperature: 0,
+          max_tokens: 16_000,
           tools: [TAG_TOOL],
-          tool_choice: { type: 'tool', name: 'tag_messages' },
+          tool_choice: { type: 'auto' },
           messages: [{ role: 'user', content: prompt }],
         });
         const block = resp.content.find((b) => b.type === 'tool_use');
