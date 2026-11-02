@@ -37,11 +37,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!dispute) return fail(404, 'NOT_FOUND', `Dispute ${id} not found`);
     if (dispute.source === 'fixture') return fail(422, 'FIXTURE_READ_ONLY', 'Fixture history disputes cannot be simulated in PayPal.');
 
-    const raw =
+    const result =
       body.action === 'require_evidence' ? await requireEvidence(id, body.evidence_for) : await adjudicate(id, body.outcome);
-    const o = (raw ?? {}) as Row;
-    const statusCode = Number(o.status_code ?? o.statusCode ?? o.status ?? 200);
-    const debugId = (o.debug_id ?? o.debugId ?? null) as string | null;
 
     let disputeStatus = dispute.status as string;
     try {
@@ -52,7 +49,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       console.error('[simulate] post-action sync failed', syncErr);
     }
 
-    return NextResponse.json({ paypal: { status_code: statusCode, debug_id: debugId }, dispute_status: disputeStatus });
+    return NextResponse.json({
+      paypal: { status_code: result.status_code, debug_id: result.debug_id },
+      dispute_status: disputeStatus,
+    });
   } catch (e) {
     const err = e as { message?: string; debugId?: string; debug_id?: string; status?: number };
     return fail(502, 'PAYPAL_ERROR', err.message ?? String(e), err.debugId ?? err.debug_id);

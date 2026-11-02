@@ -78,7 +78,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     start(controller) {
       let closed = false;
       let lastSeq = 0;
-      let heartbeat: ReturnType<typeof setInterval> | undefined;
+      const timers: { heartbeat?: ReturnType<typeof setInterval> } = {};
 
       const write = (chunk: string) => {
         if (closed) return;
@@ -146,7 +146,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         if (closed) return;
         closed = true;
         bus.off(channel, listener);
-        if (heartbeat) clearInterval(heartbeat);
+        if (timers.heartbeat) clearInterval(timers.heartbeat);
       };
 
       // Subscribe before reading the backlog so nothing emitted in between is lost; seq dedupes.
@@ -159,7 +159,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         send('error', { message: e instanceof Error ? e.message : String(e) });
       }
 
-      heartbeat = setInterval(() => write(':ping\n\n'), 15_000);
+      timers.heartbeat = setInterval(() => write(':ping\n\n'), 15_000);
       req.signal.addEventListener('abort', () => {
         cleanup();
         try {

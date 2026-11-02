@@ -1,10 +1,5 @@
-import type {
-  PayPalEnv,
-  PayPalWebhookEvent,
-  VerificationStatus,
-  WebhookVerificationHeaders,
-} from './types';
-import { PayPalApiError } from './types';
+import { isPaypalError, paypalRequest } from './client';
+import type { PayPalWebhookEvent, VerificationStatus, WebhookVerificationHeaders } from './types';
 
 /**
  * Webhook signature verification.
@@ -135,53 +130,18 @@ export interface VerifyResult {
   error?: string;
 }
 
-function apiBase(env: PayPalEnv): string {
-  return env === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
-}
-
-function currentEnv(): PayPalEnv {
-  return process.env.PAYPAL_ENV === 'live' ? 'live' : 'sandbox';
-}
-
-let tokenCache: { token: string; expiresAt: number; env: PayPalEnv } | null = null;
-
-async function getAccessToken(env: PayPalEnv): Promise<string> {
-  if (tokenCache && tokenCache.env === env && Date.now() < tokenCache.expiresAt) return tokenCache.token;
-  const id = process.env.PAYPAL_CLIENT_ID;
-  const secret = process.env.PAYPAL_CLIENT_SECRET;
-  if (!id || !secret) throw new Error('PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET are not set');
-
-  const res = await fetch(`${apiBase(env)}/v1/oauth2/token`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${id}:${secret}`).toString('base64')}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Accept: 'application/json',
-    },
-    body: 'grant_type=client_credentials',
-    signal: AbortSignal.timeout(10_000),
-  });
-  const debugId = res.headers.get('paypal-debug-id');
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new PayPalApiError({ status: res.status, message: `OAuth token request failed: ${text.slice(0, 300)}`, debugId });
-  }
-  const json = (await res.json()) as { access_token?: string; expires_in?: number };
-  if (!json.access_token) throw new PayPalApiError({ status: res.status, message: 'OAuth response missing access_token', debugId });
-  const ttlMs = Math.max(0, ((json.expires_in ?? 300) - 60) * 1000);
-  tokenCache = { token: json.access_token, expiresAt: Date.now() + ttlMs, env };
-  return json.access_token;
-}
-
 /**
  * Verifies a webhook via POST /v1/notifications/verify-webhook-signature.
+ * The call goes through the shared PayPal client, so it is logged to
+ * paypal_calls with its debug_id and answered by the mock adapter when
+ * PAYPAL_MOCK=1. The raw body is spliced in by buildVerifyBody and sent as-is.
  * Never throws: failures resolve to `{verified:false}` so the route can store
  * the event with verified=0 and answer 400.
  */
 export async function verifyWebhookSignature(
   rawBody: string,
   headers: HeaderSource,
-  opts: { webhookId?: string; env?: PayPalEnv } = {},
+  opts: { webhookId?: string } = {},
 ): Promise<VerifyResult> {
   const started = Date.now();
   const webhookId = opts.webhookId ?? process.env.PAYPAL_WEBHOOK_ID ?? '';
@@ -190,16 +150,9 @@ export async function verifyWebhookSignature(
     return { verified: false, verification_status: 'FAILURE', status_code: null, debug_id: null, duration_ms: 0, error: 'Missing PayPal transmission headers' };
   }
 
-  if (process.env.PAYPAL_MOCK === '1') {
-    const ok = parseWebhookEvent(rawBody) !== null;
-    return {
-      verified: ok,
-      verification_status: ok ? 'SUCCESS' : 'FAILURE',
-      status_code: 200,
-      debug_id: 'mock-debug-id',
-      duration_ms: Date.now() - started,
-      error: ok ? undefined : 'Body is not a PayPal event',
-    };
+  const event = parseWebhookEvent(rawBody);
+  if (!event) {
+    return { verified: false, verification_status: 'FAILURE', status_code: null, debug_id: null, duration_ms: Date.now() - started, error: 'Body is not a PayPal event' };
   }
 
   let body: string;
@@ -209,37 +162,23 @@ export async function verifyWebhookSignature(
     return { verified: false, verification_status: 'FAILURE', status_code: null, debug_id: null, duration_ms: Date.now() - started, error: (err as Error).message };
   }
 
-  const env = opts.env ?? currentEnv();
   try {
-    const token = await getAccessToken(env);
-    const res = await fetch(`${apiBase(env)}/v1/notifications/verify-webhook-signature`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+    const res = await paypalRequest<{ verification_status?: string }>('POST', '/v1/notifications/verify-webhook-signature', {
       body,
-      signal: AbortSignal.timeout(8_000),
+      disputeId: disputeIdFromEvent(event),
+      timeoutMs: 8_000,
     });
-    const debugId = res.headers.get('paypal-debug-id');
-    const text = await res.text();
-    if (!res.ok) {
-      return { verified: false, verification_status: 'FAILURE', status_code: res.status, debug_id: debugId, duration_ms: Date.now() - started, error: text.slice(0, 300) };
-    }
-    let status: VerificationStatus = 'FAILURE';
-    try {
-      const parsed = JSON.parse(text) as { verification_status?: string };
-      status = parsed.verification_status === 'SUCCESS' ? 'SUCCESS' : 'FAILURE';
-    } catch {
-      status = 'FAILURE';
-    }
-    return { verified: status === 'SUCCESS', verification_status: status, status_code: res.status, debug_id: debugId, duration_ms: Date.now() - started };
+    const status: VerificationStatus = res.data?.verification_status === 'SUCCESS' ? 'SUCCESS' : 'FAILURE';
+    return { verified: status === 'SUCCESS', verification_status: status, status_code: res.status, debug_id: res.debugId, duration_ms: Date.now() - started };
   } catch (err) {
-    const e = err as Error & { debugId?: string | null; status?: number };
+    const known = isPaypalError(err);
     return {
       verified: false,
       verification_status: 'FAILURE',
-      status_code: typeof e.status === 'number' ? e.status : null,
-      debug_id: e.debugId ?? null,
+      status_code: known && err.status > 0 ? err.status : null,
+      debug_id: known ? err.debugId : null,
       duration_ms: Date.now() - started,
-      error: e.message,
+      error: (err as Error).message,
     };
   }
 }

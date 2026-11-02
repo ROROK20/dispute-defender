@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDb } from '@/lib/db';
 import { checkSentences } from '@/lib/agent/citations';
-import { submitEvidence } from '@/lib/submit';
+import { getSourcesByKey } from '@/lib/repo/sources';
+import { submitEvidence, SubmitError } from '@/lib/submit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,16 +19,6 @@ type Draft = { sentences: Sentence[]; removed?: { id: string; text: string; reas
 
 function fail(status: number, code: string, message: string, debug_id?: string, extra?: Record<string, unknown>) {
   return NextResponse.json({ error: { code, message, ...(debug_id ? { debug_id } : {}), ...(extra ?? {}) } }, { status });
-}
-
-function pickResult(r: unknown) {
-  const o = (r ?? {}) as Row;
-  const pp = (o.paypal ?? {}) as Row;
-  return {
-    decisionId: (o.decision_id ?? o.decisionId ?? o.id ?? null) as string | null,
-    statusCode: Number(pp.status_code ?? o.status_code ?? o.statusCode ?? o.status ?? 200),
-    debugId: (pp.debug_id ?? o.debug_id ?? o.debugId ?? null) as string | null,
-  };
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -62,11 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         edited.push({ ...orig, text: e.text.trim() });
       }
 
-      const sourceRows = db.prepare('SELECT * FROM sources WHERE run_id = ?').all(body.run_id) as Row[];
-      const sourcesByKey = Object.fromEntries(sourceRows.map((s) => [s.source_key as string, s])) as Parameters<
-        typeof checkSentences
-      >[1];
-      const result = checkSentences(edited as Parameters<typeof checkSentences>[0], sourcesByKey);
+      const result = checkSentences(edited, getSourcesByKey(body.run_id));
       if (result.failed.length > 0) {
         return fail(422, 'CITATION_FAILED', 'One or more edited sentences are not supported by their cited sources.', undefined, {
           failures: result.failed,
@@ -78,23 +65,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       db.prepare('UPDATE agent_runs SET draft_json = ? WHERE id = ?').run(JSON.stringify(merged), body.run_id);
     }
 
-    const res = pickResult(await submitEvidence({ disputeId: id, runId: body.run_id }));
-    const finished = db.prepare('SELECT clock_started_at, finished_at FROM agent_runs WHERE id = ?').get(body.run_id) as Row | undefined;
-    const startedMs = Date.parse(String(finished?.clock_started_at ?? run.clock_started_at));
-    const endMs = finished?.finished_at ? Date.parse(String(finished.finished_at)) : Date.now();
-
+    const result = await submitEvidence({ disputeId: id, runId: body.run_id });
     return NextResponse.json({
-      decision_id: res.decisionId,
-      status: 'submitted',
-      paypal: { status_code: res.statusCode, debug_id: res.debugId },
-      elapsed_ms: Number.isNaN(startedMs) ? null : Math.max(0, endMs - startedMs),
+      decision_id: result.decision_id,
+      status: result.status,
+      paypal: result.paypal,
+      elapsed_ms: result.elapsed_ms,
     });
   } catch (e) {
-    const err = e as { message?: string; code?: string; status?: number; statusCode?: number; debugId?: string; debug_id?: string };
-    const code = err.code ?? 'PAYPAL_ERROR';
-    const debugId = err.debugId ?? err.debug_id;
-    const status =
-      code === 'FIXTURE_READ_ONLY' ? 422 : code === 'INVALID_STATE' || code === 'DEADLINE_PASSED' ? 409 : code === 'EVIDENCE_NOT_ALLOWED' || code === 'FILE_TOO_LARGE' ? 422 : 502;
-    return fail(status, code, err.message ?? String(e), debugId);
+    if (e instanceof SubmitError) return NextResponse.json(e.toBody(), { status: e.httpStatus });
+    const err = e as { message?: string; debugId?: string | null };
+    return fail(502, 'PAYPAL_ERROR', err.message ?? String(e), err.debugId ?? undefined);
   }
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDb } from '@/lib/db';
-import { sendMessage } from '@/lib/submit';
+import { sendDisputeMessage, SubmitError } from '@/lib/submit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,24 +29,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!dispute) return fail(404, 'NOT_FOUND', `Dispute ${id} not found`);
     if (dispute.source === 'fixture') return fail(422, 'FIXTURE_READ_ONLY', 'Fixture history disputes cannot be messaged.');
 
-    const latest = db
-      .prepare('SELECT id FROM agent_runs WHERE dispute_id = ? ORDER BY clock_started_at DESC, rowid DESC LIMIT 1')
-      .get(id) as Row | undefined;
-
-    const o = ((await sendMessage({ disputeId: id, runId: (latest?.id as string | undefined) ?? undefined, message: body.message })) ??
-      {}) as Row;
-    const pp = (o.paypal ?? {}) as Row;
-    return NextResponse.json({
-      decision_id: o.decision_id ?? o.decisionId ?? o.id ?? null,
-      paypal: {
-        status_code: Number(pp.status_code ?? o.status_code ?? o.statusCode ?? 200),
-        debug_id: pp.debug_id ?? o.debug_id ?? o.debugId ?? null,
-      },
-    });
+    const result = await sendDisputeMessage({ disputeId: id, message: body.message });
+    return NextResponse.json({ decision_id: result.decision_id, paypal: result.paypal });
   } catch (e) {
-    const err = e as { message?: string; code?: string; debugId?: string; debug_id?: string };
-    const code = err.code ?? 'PAYPAL_ERROR';
-    const status = code === 'FIXTURE_READ_ONLY' ? 422 : code === 'INVALID_STATE' ? 409 : 502;
-    return fail(status, code, err.message ?? String(e), err.debugId ?? err.debug_id);
+    if (e instanceof SubmitError) return NextResponse.json(e.toBody(), { status: e.httpStatus });
+    const err = e as { message?: string; debugId?: string | null };
+    return fail(502, 'PAYPAL_ERROR', err.message ?? String(e), err.debugId ?? undefined);
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
@@ -72,10 +72,18 @@ function since(from: string, to: string | number) {
   return (typeof to === 'number' ? to : Date.parse(to)) - Date.parse(from);
 }
 
+type CitationFailureBody = { id: string; reason: string; token?: string };
+type ApiBody = {
+  error?: { code?: string; message?: string; debug_id?: string; failures?: CitationFailureBody[]; details?: { failed?: CitationFailureBody[] } };
+  paypal?: { status_code?: number | null; debug_id?: string | null };
+  elapsed_ms?: number | null;
+  dispute_status?: string;
+};
+
 async function postJson(url: string, body: unknown) {
   const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data: data as Record<string, any> };
+  const data = (await res.json().catch(() => ({}))) as ApiBody;
+  return { ok: res.ok, status: res.status, data };
 }
 
 export default function DisputePage() {
@@ -241,7 +249,7 @@ export default function DisputePage() {
       setOutcome({ kind: 'ok', title: 'Evidence submitted to PayPal', status_code: r.data.paypal?.status_code, debug_id: r.data.paypal?.debug_id, elapsed_ms: r.data.elapsed_ms });
       setEdits({});
     } else {
-      if (r.data?.error?.code === 'CITATION_FAILED') setCitationFailures(r.data.error.failures ?? []);
+      if (r.data?.error?.code === 'CITATION_FAILED') setCitationFailures(r.data.error.failures ?? r.data.error.details?.failed ?? []);
       setOutcome({ kind: 'err', title: r.data?.error?.message ?? `Submission failed (${r.status})`, debug_id: r.data?.error?.debug_id });
     }
     await load();

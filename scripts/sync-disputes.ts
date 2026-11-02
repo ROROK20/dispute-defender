@@ -4,6 +4,8 @@
  * Usage: npm run sync
  */
 
+export {};
+
 function loadEnv(): void {
   try {
     process.loadEnvFile?.('.env');
@@ -17,11 +19,10 @@ async function main(): Promise<void> {
   if (!process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_MOCK !== '1') {
     throw new Error('PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET are required (or PAYPAL_MOCK=1)');
   }
-  const mod = (await import('../src/lib/sync')) as Record<string, unknown>;
-  const name = ['syncDisputes', 'syncOnce', 'runSync', 'pollOnce', 'sync'].find((n) => typeof mod[n] === 'function');
-  if (!name) throw new Error('src/lib/sync.ts exports no one-shot sync function');
+  // Imported after loadEnv() so the module graph sees the .env values.
+  const { syncDisputes } = await import('../src/lib/sync');
   const started = Date.now();
-  const result = await (mod[name] as () => Promise<unknown>)();
+  const result = await syncDisputes();
   console.log(JSON.stringify({ ok: true, duration_ms: Date.now() - started, result: result ?? null }, null, 2));
 }
 

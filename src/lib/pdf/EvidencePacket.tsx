@@ -165,6 +165,9 @@ export function EvidencePacket({ data }: { data: EvidencePacketData }) {
   const citedMessages = messageSources.filter((s) => numberByKey.has(s.source_key));
   const messagesToShow = (citedMessages.length > 0 ? citedMessages : messageSources).slice(0, 6);
   const d = data.dispute;
+  // react-pdf defaults CreationDate to the wall clock and pdfkit hashes it into the file ID.
+  // Pinning both to generated_at keeps the rendered bytes identical for identical input.
+  const generatedAt = new Date(data.generated_at);
 
   return (
     <Document
@@ -173,6 +176,8 @@ export function EvidencePacket({ data }: { data: EvidencePacketData }) {
       subject={`${reasonLabel(d.reason)} - ${d.id}`}
       creator="DisputeDefender"
       producer="DisputeDefender"
+      creationDate={generatedAt}
+      modificationDate={generatedAt}
     >
       <Page size="LETTER" style={styles.page}>
         <PageChrome data={data} />

@@ -6,6 +6,8 @@
  * Usage: npm run webhook:register
  */
 
+export {};
+
 const EVENT_TYPES = ['CUSTOMER.DISPUTE.CREATED', 'CUSTOMER.DISPUTE.UPDATED', 'CUSTOMER.DISPUTE.RESOLVED'];
 
 function loadEnv(): void {

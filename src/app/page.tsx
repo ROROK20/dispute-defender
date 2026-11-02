@@ -1,27 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import DisputeGrid from '@/components/grid/DisputeGrid';
+import DisputeGrid, { type DisputeRow } from '@/components/grid/DisputeGrid';
 import TriggerDemoButton from '@/components/TriggerDemoButton';
-
-type LatestRun = { id: string; status: string; draft_ready_ms: number | null; submitted_ms: number | null } | null;
-
-type DisputeRow = {
-  id: string;
-  source: 'paypal_sandbox' | 'fixture';
-  reason: string;
-  status: string;
-  stage: string | null;
-  amount_cents: number;
-  currency: string;
-  sku: string | null;
-  sku_name: string | null;
-  buyer_name: string | null;
-  seller_response_due_at: string | null;
-  strength_score: number | null;
-  recommendation: string | null;
-  latest_run: LatestRun;
-};
 
 function money(cents: number, currency = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
@@ -29,6 +10,9 @@ function money(cents: number, currency = 'USD') {
 
 export default function InboxPage() {
   const [disputes, setDisputes] = useState<DisputeRow[] | null>(null);
+  // DisputeGrid polls /api/disputes itself. It gets the first non-empty snapshot as a stable seed so it
+  // renders without a second spinner and its load effect does not re-run on every inbox poll.
+  const [gridSeed, setGridSeed] = useState<DisputeRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncNote, setSyncNote] = useState<string | null>(null);
@@ -38,7 +22,9 @@ export default function InboxPage() {
       const res = await fetch('/api/disputes', { cache: 'no-store' });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error?.message ?? `HTTP ${res.status}`);
-      setDisputes(body.disputes as DisputeRow[]);
+      const rows = body.disputes as DisputeRow[];
+      setDisputes(rows);
+      setGridSeed((prev) => prev ?? (rows.length > 0 ? rows : null));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -60,6 +46,7 @@ export default function InboxPage() {
       if (!res.ok) throw new Error(body?.error?.message ?? `HTTP ${res.status}`);
       setSyncNote(`Synced ${body.synced} dispute(s)${body.new_runs?.length ? `, started ${body.new_runs.length} run(s)` : ''}.`);
       await load();
+      window.dispatchEvent(new Event('disputes:refresh'));
     } catch (e) {
       setSyncNote(`Sync failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -139,7 +126,7 @@ export default function InboxPage() {
         </div>
       )}
 
-      {disputes !== null && disputes.length > 0 && <DisputeGrid disputes={disputes} />}
+      {disputes !== null && disputes.length > 0 && <DisputeGrid initialDisputes={gridSeed ?? disputes} />}
     </div>
   );
 }

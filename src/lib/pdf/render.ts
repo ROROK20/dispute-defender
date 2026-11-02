@@ -30,6 +30,9 @@ export function evidenceFilename(disputeId: string): string {
 function validate(data: EvidencePacketData): void {
   if (!data?.dispute?.id) throw new EvidencePdfError('Packet data is missing dispute.id');
   if (!data.run_id) throw new EvidencePdfError('Packet data is missing run_id');
+  if (typeof data.generated_at !== 'string' || Number.isNaN(Date.parse(data.generated_at))) {
+    throw new EvidencePdfError('Packet data needs generated_at as an ISO date (it fixes the PDF creation date)');
+  }
   if (!Array.isArray(data.sentences) || !Array.isArray(data.sources)) {
     throw new EvidencePdfError('Packet data needs sentences[] and sources[]');
   }

@@ -1,15 +1,34 @@
 import { getDb, nowIso, parseJson } from "./db";
 import { emitDone, emitStatus } from "./bus";
-import { elapsedMs, truncate, valueFromCents } from "./format";
+import { elapsedMs, valueFromCents } from "./format";
 import { newDecisionId } from "./ids";
 import { upsertDisputeFromPaypal } from "./sync";
 import { checkSentences } from "./agent/citations";
-import { allowedEvidenceTypes } from "./paypal/evidence-rules";
-import { acceptClaim, getDispute, makeOffer, provideEvidence, sendMessage } from "./paypal/disputes";
-import { renderEvidencePdf } from "./pdf/render";
+import { isEvidenceType } from "./paypal/evidence-rules";
+import { acceptClaim, getDispute, makeOffer, provideEvidence, sendMessage, type OfferType } from "./paypal/disputes";
+import type { EvidenceInput } from "./paypal/multipart";
+import { loadEvidencePacket } from "./pdf/packet";
+import { renderEvidencePdf, type RenderedEvidencePdf } from "./pdf/render";
+import {
+  MAX_NOTE_CHARS,
+  buildEvidences,
+  checkSubmissionGuards,
+  type EvidencePlanItem,
+  type PlannedEvidence,
+} from "./submit-guards";
 
-export const MAX_PDF_BYTES = 10 * 1024 * 1024;
-export const MAX_NOTE_CHARS = 2000;
+export {
+  MAX_NOTE_CHARS,
+  MAX_PDF_BYTES,
+  buildEvidences,
+  checkSubmissionGuards,
+  type EvidencePlanItem,
+  type GuardInput,
+  type GuardResult,
+  type PlannedEvidence,
+} from "./submit-guards";
+export type { OfferType } from "./paypal/disputes";
+
 export const MAX_MESSAGE_CHARS = 2000;
 
 export class SubmitError extends Error {
@@ -66,20 +85,6 @@ interface Draft {
   removed: { id: string; text: string; reason: string }[];
 }
 
-interface EvidencePlanItem {
-  evidence_type: string;
-  notes?: string;
-  tracking_number?: string;
-  carrier?: string;
-}
-
-export interface PaypalEvidence {
-  evidence_type: string;
-  evidence_info?: { tracking_info: { carrier_name: string; tracking_number: string }[] };
-  notes: string;
-  documents?: { name: string }[];
-}
-
 interface CallRow {
   id: number;
   status_code: number | null;
@@ -89,81 +94,6 @@ interface CallRow {
 export interface PaypalOutcome {
   status_code: number | null;
   debug_id: string | null;
-}
-
-// ── Guards (pure) ─────────────────────────────────────────────────────
-
-export interface GuardInput {
-  source: string;
-  paypalStatus: string | null | undefined;
-  dueAt: string | null | undefined;
-  now: Date;
-  reason: string;
-  evidenceTypes: string[];
-  pdfBytes: number;
-}
-
-export type GuardResult =
-  | { ok: true }
-  | { ok: false; code: string; message: string; httpStatus: number };
-
-export function checkSubmissionGuards(i: GuardInput): GuardResult {
-  if (i.source === "fixture") {
-    return { ok: false, code: "FIXTURE_READ_ONLY", message: "Fixture history disputes cannot be sent to PayPal.", httpStatus: 422 };
-  }
-  if (i.paypalStatus !== "WAITING_FOR_SELLER_RESPONSE") {
-    return {
-      ok: false,
-      code: "INVALID_STATE",
-      message: `PayPal status is ${i.paypalStatus ?? "unknown"}; evidence can only be provided while WAITING_FOR_SELLER_RESPONSE.`,
-      httpStatus: 409,
-    };
-  }
-  if (i.dueAt) {
-    const due = Date.parse(i.dueAt);
-    if (Number.isFinite(due) && i.now.getTime() >= due) {
-      return { ok: false, code: "DEADLINE_PASSED", message: `The seller response deadline (${i.dueAt}) has passed.`, httpStatus: 409 };
-    }
-  }
-  if (i.evidenceTypes.length === 0) {
-    return { ok: false, code: "NO_EVIDENCE", message: "The evidence plan is empty.", httpStatus: 422 };
-  }
-  const allowed = new Set<string>(allowedEvidenceTypes(i.reason));
-  const bad = i.evidenceTypes.filter((t) => !allowed.has(t));
-  if (bad.length > 0) {
-    return {
-      ok: false,
-      code: "EVIDENCE_TYPE_NOT_ALLOWED",
-      message: `Evidence type(s) ${bad.join(", ")} are not allowed for ${i.reason}. Allowed: ${[...allowed].join(", ")}.`,
-      httpStatus: 422,
-    };
-  }
-  if (i.pdfBytes <= 0) {
-    return { ok: false, code: "PDF_EMPTY", message: "The evidence PDF is empty.", httpStatus: 422 };
-  }
-  if (i.pdfBytes > MAX_PDF_BYTES) {
-    return { ok: false, code: "PDF_TOO_LARGE", message: `The evidence PDF is ${i.pdfBytes} bytes; the limit is ${MAX_PDF_BYTES}.`, httpStatus: 422 };
-  }
-  return { ok: true };
-}
-
-/** Maps the agent's evidence plan to PayPal's provide-evidence `evidences[]`. The PDF is attached to the first item. */
-export function buildEvidences(plan: EvidencePlanItem[], letter: string, filename: string): PaypalEvidence[] {
-  const items: EvidencePlanItem[] = plan.length > 0 ? plan : [{ evidence_type: "OTHER", notes: "" }];
-  return items.map((item, idx) => {
-    const notes = idx === 0 ? letter || item.notes || "" : item.notes || "";
-    const evidence: PaypalEvidence = {
-      evidence_type: item.evidence_type,
-      notes: truncate(notes, MAX_NOTE_CHARS),
-    };
-    if (item.tracking_number) {
-      evidence.evidence_info = {
-        tracking_info: [{ carrier_name: item.carrier || "OTHER", tracking_number: item.tracking_number }],
-      };
-    }
-    if (idx === 0) evidence.documents = [{ name: filename }];
-    return evidence;
-  });
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -251,6 +181,16 @@ function insertDecision(disputeId: string, runId: string | null, action: string,
   return id;
 }
 
+/** Narrows guard-checked evidence to the multipart input type. The guard has already rejected unknown types. */
+function toEvidenceInputs(evidences: PlannedEvidence[]): EvidenceInput[] {
+  return evidences.map((e) => {
+    if (!isEvidenceType(e.evidence_type)) {
+      throw new SubmitError("EVIDENCE_TYPE_NOT_ALLOWED", `Evidence type ${e.evidence_type} is not a known PayPal evidence type.`, 422);
+    }
+    return { ...e, evidence_type: e.evidence_type };
+  });
+}
+
 function settleDecision(decisionId: string, result: "success" | "failed", call: CallRow | null): void {
   getDb()
     .prepare(`UPDATE decisions SET result = ?, paypal_call_id = ? WHERE id = ?`)
@@ -336,17 +276,17 @@ export async function submitEvidence(input: SubmitEvidenceInput): Promise<Submit
     throw new SubmitError("EMPTY_DRAFT", "The draft has no supported sentences to submit.", 422);
   }
 
-  const filename = `evidence-${dispute.id}.pdf`;
-  const plan = parseJson<EvidencePlanItem[]>(run.evidence_plan_json, []);
-  const letter = draft.sentences.map((s) => s.text).join(" ");
-  const evidences = buildEvidences(plan, letter, filename);
-
-  let pdf: Uint8Array;
+  // Same builder as GET /api/disputes/:id/pdf, so the seller previewed exactly these bytes.
+  let pdf: RenderedEvidencePdf;
   try {
-    pdf = await renderEvidencePdf(run.id);
+    pdf = await renderEvidencePdf(loadEvidencePacket(dispute.id, run.id));
   } catch (err) {
     throw new SubmitError("PDF_FAILED", `Could not render the evidence PDF: ${(err as Error).message}`, 500);
   }
+
+  const plan = parseJson<EvidencePlanItem[]>(run.evidence_plan_json, []);
+  const letter = draft.sentences.map((s) => s.text).join(" ");
+  const evidences = buildEvidences(plan, letter);
 
   const live = await fetchLiveDispute(dispute.id);
   const guard = checkSubmissionGuards({
@@ -356,20 +296,21 @@ export async function submitEvidence(input: SubmitEvidenceInput): Promise<Submit
     now: new Date(),
     reason: dispute.reason,
     evidenceTypes: evidences.map((e) => e.evidence_type),
-    pdfBytes: pdf.byteLength,
+    pdfBytes: pdf.bytes,
   });
   if (!guard.ok) throw new SubmitError(guard.code, guard.message, guard.httpStatus);
+  const evidenceInputs = toEvidenceInputs(evidences);
 
   const decisionId = insertDecision(dispute.id, run.id, "submit_evidence", {
-    evidences,
-    filename,
-    pdf_bytes: pdf.byteLength,
+    evidences: evidenceInputs,
+    filename: pdf.filename,
+    pdf_bytes: pdf.bytes,
     sentence_count: draft.sentences.length,
     edited_sentence_ids: input.editedSentences?.map((e) => e.id) ?? [],
   });
 
   const paypal = await performAction(decisionId, dispute.id, "provide-evidence", () =>
-    provideEvidence(dispute.id, { input: { evidences }, pdf, filename }, { runId: run.id }),
+    provideEvidence(dispute.id, { evidences: evidenceInputs, pdf: pdf.buffer, filename: pdf.filename }, { runId: run.id }),
   );
 
   const finishedAt = nowIso();
@@ -385,8 +326,6 @@ export async function submitEvidence(input: SubmitEvidenceInput): Promise<Submit
     elapsed_ms: elapsedMs(run.clock_started_at, finishedAt),
   };
 }
-
-export type OfferType = "REFUND" | "REFUND_WITH_RETURN" | "REFUND_WITH_REPLACEMENT";
 
 export interface ConcedeInput {
   disputeId: string;
@@ -435,20 +374,20 @@ export async function concede(input: ConcedeInput): Promise<ConcedeResult> {
   let paypal: PaypalOutcome;
   let decisionId: string;
   if (input.action === "accept_claim") {
-    const body = { note, accept_claim_type: "REFUND" as const };
-    decisionId = insertDecision(dispute.id, run?.id ?? null, "accept_claim", body);
+    // The decision row records the body PayPal receives.
+    decisionId = insertDecision(dispute.id, run?.id ?? null, "accept_claim", { note, accept_claim_type: "REFUND" });
     paypal = await performAction(decisionId, dispute.id, "accept-claim", () =>
-      acceptClaim(dispute.id, body, { runId: run?.id }),
+      acceptClaim(dispute.id, { note, acceptClaimType: "REFUND" }, { runId: run?.id }),
     );
   } else {
-    const body = {
+    const offerType = input.offerType ?? "REFUND";
+    decisionId = insertDecision(dispute.id, run?.id ?? null, "make_offer", {
       note,
       offer_amount: { currency_code: dispute.currency, value: valueFromCents(offerCents) },
-      offer_type: input.offerType ?? "REFUND",
-    };
-    decisionId = insertDecision(dispute.id, run?.id ?? null, "make_offer", body);
+      offer_type: offerType,
+    });
     paypal = await performAction(decisionId, dispute.id, "make-offer", () =>
-      makeOffer(dispute.id, body, { runId: run?.id }),
+      makeOffer(dispute.id, { note, amountCents: offerCents, currency: dispute.currency, offerType }, { runId: run?.id }),
     );
   }
 

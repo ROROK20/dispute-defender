@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDb } from '@/lib/db';
-import { acceptClaim, makeOffer } from '@/lib/submit';
+import { concede, SubmitError } from '@/lib/submit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,16 +21,6 @@ type Row = Record<string, unknown>;
 
 function fail(status: number, code: string, message: string, debug_id?: string) {
   return NextResponse.json({ error: { code, message, ...(debug_id ? { debug_id } : {}) } }, { status });
-}
-
-function pickResult(r: unknown) {
-  const o = (r ?? {}) as Row;
-  const pp = (o.paypal ?? {}) as Row;
-  return {
-    decisionId: (o.decision_id ?? o.decisionId ?? o.id ?? null) as string | null,
-    statusCode: Number(pp.status_code ?? o.status_code ?? o.statusCode ?? o.status ?? 200),
-    debugId: (pp.debug_id ?? o.debug_id ?? o.debugId ?? null) as string | null,
-  };
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -53,29 +43,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (['submitted', 'conceded'].includes(run.status as string)) {
       return fail(409, 'INVALID_STATE', `This run was already ${run.status as string}.`);
     }
-
-    let result: unknown;
-    if (body.action === 'accept_claim') {
-      result = await acceptClaim({ disputeId: id, runId: body.run_id, note: body.note });
-    } else {
-      if (body.offer_amount_cents > Number(dispute.amount_cents)) {
-        return fail(400, 'BAD_REQUEST', 'Offer cannot exceed the disputed amount.');
-      }
-      result = await makeOffer({
-        disputeId: id,
-        runId: body.run_id,
-        note: body.note,
-        offerAmountCents: body.offer_amount_cents,
-        offerType: body.offer_type,
-      });
+    if (body.action === 'make_offer' && body.offer_amount_cents > Number(dispute.amount_cents)) {
+      return fail(400, 'BAD_REQUEST', 'Offer cannot exceed the disputed amount.');
     }
 
-    const r = pickResult(result);
-    return NextResponse.json({ decision_id: r.decisionId, paypal: { status_code: r.statusCode, debug_id: r.debugId } });
+    const result = await concede(
+      body.action === 'accept_claim'
+        ? { disputeId: id, runId: body.run_id, action: 'accept_claim', note: body.note }
+        : {
+            disputeId: id,
+            runId: body.run_id,
+            action: 'make_offer',
+            note: body.note,
+            offerAmountCents: body.offer_amount_cents,
+            offerType: body.offer_type,
+          },
+    );
+    return NextResponse.json({ decision_id: result.decision_id, paypal: result.paypal });
   } catch (e) {
-    const err = e as { message?: string; code?: string; debugId?: string; debug_id?: string };
-    const code = err.code ?? 'PAYPAL_ERROR';
-    const status = code === 'FIXTURE_READ_ONLY' ? 422 : code === 'INVALID_STATE' || code === 'DEADLINE_PASSED' ? 409 : 502;
-    return fail(status, code, err.message ?? String(e), err.debugId ?? err.debug_id);
+    if (e instanceof SubmitError) return NextResponse.json(e.toBody(), { status: e.httpStatus });
+    const err = e as { message?: string; debugId?: string | null };
+    return fail(502, 'PAYPAL_ERROR', err.message ?? String(e), err.debugId ?? undefined);
   }
 }

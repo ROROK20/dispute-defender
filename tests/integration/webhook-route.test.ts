@@ -111,7 +111,9 @@ describe('POST /api/webhooks/paypal', () => {
     enqueueRun.mockClear();
     const res = await route.POST(post(event('WH-EVT-3', 'CUSTOMER.DISPUTE.RESOLVED')));
     expect(res.status).toBe(200);
-    await new Promise((r) => setTimeout(r, 50));
-    expect(enqueueRun).not.toHaveBeenCalled();
+    await new Promise((r) => setTimeout(r, 200));
+    // The CREATED event from the first test is processed asynchronously and can
+    // land after mockClear, so check this event specifically.
+    expect(enqueueRun).not.toHaveBeenCalledWith(expect.anything(), 'WH-EVT-3');
   });
 });

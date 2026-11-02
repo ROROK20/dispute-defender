@@ -20,53 +20,18 @@ export async function POST(req: NextRequest) {
     return fail(400, 'BAD_REQUEST', 'Body must be {sku: "JT-1xx"}');
   }
 
-  const sku = getDb().prepare('SELECT sku, name, price_cents, description FROM skus WHERE sku = ?').get(body.sku) as
-    | { sku: string; name: string; price_cents: number; description: string }
+  const sku = getDb().prepare('SELECT sku, name, price_cents FROM skus WHERE sku = ?').get(body.sku) as
+    | { sku: string; name: string; price_cents: number }
     | undefined;
   if (!sku) return fail(404, 'NOT_FOUND', `Unknown SKU ${body.sku}`);
 
-  const value = (sku.price_cents / 100).toFixed(2);
-  const payload = {
-    intent: 'CAPTURE',
-    purchase_units: [
-      {
-        reference_id: sku.sku,
-        description: sku.name.slice(0, 127),
-        amount: {
-          currency_code: 'USD',
-          value,
-          breakdown: { item_total: { currency_code: 'USD', value } },
-        },
-        items: [
-          {
-            name: sku.name.slice(0, 127),
-            sku: sku.sku,
-            description: sku.description.slice(0, 127),
-            quantity: '1',
-            category: 'PHYSICAL_GOODS',
-            unit_amount: { currency_code: 'USD', value },
-          },
-        ],
-      },
-    ],
-    payment_source: {
-      paypal: {
-        experience_context: {
-          brand_name: 'Juniper Thread Co.',
-          shipping_preference: 'GET_FROM_FILE',
-          user_action: 'PAY_NOW',
-        },
-      },
-    },
-  };
-
   try {
-    const order = (await createOrder(payload)) as unknown as Record<string, unknown>;
-    const id = (order?.id ?? (order?.data as Record<string, unknown> | undefined)?.id) as string | undefined;
-    if (!id) return fail(502, 'PAYPAL_ERROR', 'PayPal did not return an order id');
-    return NextResponse.json({ id });
+    // POST /v2/checkout/orders: intent CAPTURE, reference_id = sku, one item, shipping GET_FROM_FILE (paypal/orders.ts).
+    const order = await createOrder({ sku: sku.sku, name: sku.name, priceCents: sku.price_cents });
+    if (!order.id) return fail(502, 'PAYPAL_ERROR', 'PayPal did not return an order id');
+    return NextResponse.json({ id: order.id });
   } catch (e) {
-    const err = e as { message?: string; debugId?: string; debug_id?: string };
-    return fail(502, 'PAYPAL_ERROR', err.message ?? String(e), err.debugId ?? err.debug_id);
+    const err = e as { message?: string; debugId?: string | null };
+    return fail(502, 'PAYPAL_ERROR', err.message ?? String(e), err.debugId ?? undefined);
   }
 }

@@ -160,7 +160,12 @@ export async function mockPaypalRequest(req: MockRequest): Promise<MockResponse>
   }
 
   if ((m = p.match(/^\/v1\/shipping\/trackers\/([^/]+)$/)) && method === 'GET') {
-    return ok(loadFixture('tracker.json'));
+    // Tracker id is `{transaction_id}-{tracking_number}`; capture ids never contain '-', so split at the first one.
+    const trackerId = decodeURIComponent(m[1]);
+    const dash = trackerId.indexOf('-');
+    const tracker = loadFixture<Json>('tracker.json');
+    if (dash <= 0 || dash === trackerId.length - 1) return ok(tracker);
+    return ok({ ...tracker, transaction_id: trackerId.slice(0, dash), tracking_number: trackerId.slice(dash + 1) });
   }
 
   return notFound(`${method} ${p}`);

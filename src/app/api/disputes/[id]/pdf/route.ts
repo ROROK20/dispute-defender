@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { loadEvidencePacket } from '@/lib/pdf/packet';
 import { renderEvidencePdf } from '@/lib/pdf/render';
 
 export const runtime = 'nodejs';
@@ -29,14 +30,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: { code: 'INVALID_STATE', message: 'The draft is not ready yet' } }, { status: 409 });
     }
 
-    const pdf = await renderEvidencePdf(runId);
-    const bytes = pdf instanceof Uint8Array ? pdf : new Uint8Array(pdf as ArrayBuffer);
-    return new Response(bytes as unknown as BodyInit, {
+    // Same packet builder and renderer as the submission service: these are the bytes /approve would send.
+    const pdf = await renderEvidencePdf(loadEvidencePacket(id, runId));
+    return new Response(new Uint8Array(pdf.buffer), {
       status: 200,
       headers: {
         'content-type': 'application/pdf',
-        'content-length': String(bytes.byteLength),
-        'content-disposition': `inline; filename="evidence-${id}.pdf"`,
+        'content-length': String(pdf.bytes),
+        'content-disposition': `inline; filename="${pdf.filename}"`,
         'cache-control': 'no-store',
       },
     });
