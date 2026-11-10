@@ -47,7 +47,8 @@ Thumbs.db
 
 # deploy
 .vercel
-.render/data/live-cli-run.json
+.render/
+data/live-cli-run.json
 
-demo/work/
+demo/work*/
 demo/out/

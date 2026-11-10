@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How it's built</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  /* Scene K. Every box names a module that exists in src/lib and every PayPal
+     endpoint is one the code calls (src/lib/paypal/*). Frame-stepped like T/Z.
+     The bottom 170 px stay clear for the caption. */
+  .head { position: absolute; left: 135px; top: 64px; animation: rise 800ms cubic-bezier(.16,1,.3,1) 0ms both; }
+  .eyebrow { font-size: 19px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--teal-bright); }
+  .title { margin-top: 8px; font-size: 50px; font-weight: 720; letter-spacing: -0.02em; }
+  .box {
+    position: absolute;
+    padding: 18px 20px 16px;
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.085), rgba(255,255,255,0.045));
+    box-shadow: inset 0 0 0 1.5px rgba(148,163,184,0.28), 0 18px 40px rgba(0,0,0,0.3);
+    animation: pop 700ms cubic-bezier(.2,1.2,.35,1) both;
+  }
+  .box.ai { box-shadow: inset 0 0 0 1.5px rgba(45,212,191,0.55), 0 18px 40px rgba(0,0,0,0.3); }
+  .box.code { box-shadow: inset 0 0 0 1.5px rgba(129,140,248,0.55), 0 18px 40px rgba(0,0,0,0.3); }
+  .box.human { box-shadow: inset 0 0 0 1.5px rgba(251,191,36,0.6), 0 18px 40px rgba(0,0,0,0.3); }
+  .tag { display: inline-block; font-size: 14px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; margin-bottom: 9px; }
+  .ai .tag { color: #5eead4; background: rgba(45,212,191,0.13); }
+  .code .tag { color: #a5b4fc; background: rgba(129,140,248,0.14); }
+  .human .tag { color: #fcd34d; background: rgba(251,191,36,0.14); }
+  .plain .tag { color: #cbd5e1; background: rgba(148,163,184,0.14); }
+  .name { font-size: 27px; font-weight: 680; letter-spacing: -0.01em; line-height: 1.15; }
+  .sub { margin-top: 7px; font-size: 17.5px; line-height: 1.35; color: var(--ink-muted); }
+  .mono { font-family: var(--mono); font-size: 14.5px; line-height: 1.5; color: rgba(203,213,225,0.78); margin-top: 8px; }
+
+  .band {
+    position: absolute;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.035);
+    box-shadow: inset 0 0 0 1.5px rgba(148,163,184,0.25);
+    animation: rise 800ms cubic-bezier(.16,1,.3,1) both;
+  }
+  .band .bhead { position: absolute; right: 26px; top: 18px; display: flex; align-items: center; gap: 16px; }
+  .band .bname { font-size: 26px; font-weight: 700; }
+  .band .fixture { font-size: 16px; font-weight: 650; color: #fcd34d; background: rgba(251,191,36,0.13); padding: 5px 12px; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(251,191,36,0.4); }
+  .chip {
+    position: absolute;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.06);
+    box-shadow: inset 0 0 0 1px rgba(148,163,184,0.25);
+    animation: rise 700ms cubic-bezier(.16,1,.3,1) both;
+  }
+  .chip .cname { font-size: 21px; font-weight: 650; }
+  .chip .cmono { margin-top: 5px; font-family: var(--mono); font-size: 14px; color: rgba(203,213,225,0.75); line-height: 1.45; }
+
+  svg#wires { position: absolute; inset: 0; overflow: visible; }
+  .wire { fill: none; stroke: rgba(148,163,184,0.75); stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 600ms ease-out both; }
+  .wire.api { stroke: rgba(251,191,36,0.6); stroke-width: 2; }
+  .head-arrow { fill: rgba(148,163,184,0.9); animation: fade 300ms ease-out both; }
+  .head-arrow.api { fill: rgba(251,191,36,0.8); }
+  .pulse { fill: #2dd4bf; filter: drop-shadow(0 0 6px rgba(45,212,191,0.9)); }
+
+  @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="backdrop"></div>
+<div class="head">
+  <div class="eyebrow">Under the hood</div>
+  <div class="title">How Dispute Defender is built</div>
+</div>
+<div id="stage"></div>
+<svg id="wires" width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg"></svg>
+<script>
+  // Layout: a five-box row (intake to review), then a row back right-to-left
+  // (approval to submission), then the PayPal band underneath.
+  const W = 290, GAP = 50, X0 = 135, YA = 214, HA = 250, YB = 520, HB = 150;
+  const col = (i) => X0 + i * (W + GAP);
+  const boxes = [
+    { id: 'intake', x: col(0), y: YA, h: HA, kind: 'plain', tag: 'Intake', name: 'Webhook receiver', sub: 'PayPal signature verified, plus a poller fallback', mono: 'src/app/api/webhooks/paypal\nsrc/lib/sync.ts' },
+    { id: 'agent', x: col(1), y: YA, h: HA, kind: 'ai', tag: 'Claude · tool use', name: 'Agent runner', sub: 'Reads the dispute, messages, order, tracking, policies', mono: 'get_dispute · get_messages\nget_transaction · get_sku\nget_tracking · get_policy' },
+    { id: 'score', x: col(2), y: YA, h: HA, kind: 'code', tag: 'Code', name: 'Evidence score + expected value', sub: 'Published rubric per reason code; fight vs refund math', mono: 'score_evidence\ncompute_expected_value' },
+    { id: 'check', x: col(3), y: YA, h: HA, kind: 'code', tag: 'Deterministic', name: 'Citation checker', sub: 'Numbers, dates and quotes must be in the cited sources', mono: 'src/lib/agent/citations.ts' },
+    { id: 'review', x: col(4), y: YA, h: HA, kind: 'ai', tag: 'Claude Opus', name: 'Reword-only pass', sub: 'Re-checked; discarded if any sentence fails', mono: 'src/lib/agent/review.ts' },
+    { id: 'approve', x: col(4), y: YB, h: HB, kind: 'human', tag: 'Seller', name: 'Approves', sub: 'Nothing is sent before this' },
+    { id: 'pdf', x: col(3), y: YB, h: HB, kind: 'code', tag: 'React PDF', name: 'Evidence packet', sub: 'Same bytes as the preview' },
+    { id: 'submit', x: col(2), y: YB, h: HB, kind: 'code', tag: 'Code', name: 'Submission service', sub: 'Evidence + PDF, or a refund' },
+  ];
+  const band = { x: X0, y: 726, w: col(4) + W - X0, h: 168 };
+  const chips = [
+    { id: 'webhooks', x: band.x + 26, w: 270, name: 'Webhooks', mono: 'verify-webhook-signature' },
+    { id: 'disputes', x: band.x + 330, w: 610, name: 'Disputes API', mono: 'get · provide-evidence · accept-claim\nmake-offer · send-message' },
+    { id: 'orders', x: band.x + 960, w: 360, name: 'Orders v2 + Payments', mono: 'orders/{id} · captures/{id}' },
+    { id: 'tracking', x: band.x + 1340, w: band.w - 1340 - 26, name: 'Add Tracking', mono: 'shipping/trackers' },
+  ];
+
+  const stage = document.getElementById('stage');
+  const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  boxes.forEach((b, i) => {
+    const e = mk('div', `box ${b.kind}`);
+    Object.assign(e.style, { left: `${b.x}px`, top: `${b.y}px`, width: `${W}px`, height: `${b.h}px`, animationDelay: `${250 + i * 230}ms` });
+    e.append(mk('div', 'tag', b.tag), mk('div', 'name', b.name), mk('div', 'sub', b.sub));
+    if (b.mono) { const m = mk('div', 'mono'); b.mono.split('\n').forEach((l, j) => { if (j) m.append(document.createElement('br')); m.append(l); }); e.append(m); }
+    stage.append(e);
+  });
+  const bandEl = mk('div', 'band');
+  Object.assign(bandEl.style, { left: `${band.x}px`, top: `${band.y}px`, width: `${band.w}px`, height: `${band.h}px`, animationDelay: '2100ms' });
+  const bh = mk('div', 'bhead');
+  bh.append(mk('div', 'bname', 'PayPal REST APIs'), mk('div', 'fixture', 'sandbox-shaped fixtures in this recording'));
+  bandEl.append(bh);
+  stage.append(bandEl);
+  chips.forEach((c, i) => {
+    const e = mk('div', 'chip');
+    Object.assign(e.style, { left: `${c.x}px`, top: `${band.y + 68}px`, width: `${c.w}px`, animationDelay: `${2300 + i * 120}ms` });
+    const m = mk('div', 'cmono');
+    c.mono.split('\n').forEach((l, j) => { if (j) m.append(document.createElement('br')); m.append(l); });
+    e.append(mk('div', 'cname', c.name), m);
+    stage.append(e);
+  });
+
+  // Wires: the main flow, then dashed API links to the PayPal band.
+  const svg = document.getElementById('wires');
+  const NS = 'http://www.w3.org/2000/svg';
+  const by = Object.fromEntries(boxes.map((b) => [b.id, b]));
+  const midY = (b) => b.y + b.h / 2;
+  const wire = (d, end, api, delay) => {
+    const p = document.createElementNS(NS, 'path');
+    p.setAttribute('d', d);
+    p.setAttribute('pathLength', '1');
+    p.setAttribute('class', `wire${api ? ' api' : ''}`);
+    p.style.animationDelay = `${delay}ms`;
+    if (api) p.style.strokeDasharray = 'none';
+    svg.append(p);
+    if (end) {
+      const [x, y, dir] = end;
+      const a = document.createElementNS(NS, 'path');
+      const s = 9;
+      const pts = { r: [[x, y], [x - s * 1.4, y - s], [x - s * 1.4, y + s]], l: [[x, y], [x + s * 1.4, y - s], [x + s * 1.4, y + s]], d: [[x, y], [x - s, y - s * 1.4], [x + s, y - s * 1.4]], u: [[x, y], [x - s, y + s * 1.4], [x + s, y + s * 1.4]] }[dir];
+      a.setAttribute('d', `M${pts.map((q) => q.join(',')).join(' L')} Z`);
+      a.setAttribute('class', `head-arrow${api ? ' api' : ''}`);
+      a.style.animationDelay = `${delay + 450}ms`;
+      svg.append(a);
+    }
+  };
+  const chain = ['intake', 'agent', 'score', 'check', 'review'];
+  chain.slice(1).forEach((id, i) => {
+    const a = by[chain[i]], b = by[id];
+    wire(`M${a.x + W + 6},${midY(a)} L${b.x - 8},${midY(b)}`, [b.x - 6, midY(b), 'r'], false, 480 + i * 230);
+  });
+  const rv = by.review, ap = by.approve, pdf = by.pdf, sub = by.submit;
+  wire(`M${rv.x + W / 2},${rv.y + rv.h + 6} L${ap.x + W / 2},${ap.y - 8}`, [ap.x + W / 2, ap.y - 6, 'd'], false, 1400);
+  wire(`M${ap.x - 6},${midY(ap)} L${pdf.x + W + 8},${midY(pdf)}`, [pdf.x + W + 6, midY(pdf), 'l'], false, 1620);
+  wire(`M${pdf.x - 6},${midY(pdf)} L${sub.x + W + 8},${midY(sub)}`, [sub.x + W + 6, midY(sub), 'l'], false, 1840);
+  // API links (solid amber): submission writes to Disputes; intake hears Webhooks; the agent reads PayPal.
+  const chipTop = band.y + 68;
+  const subX = sub.x + 70;
+  wire(`M${subX},${sub.y + sub.h + 6} L${subX},${chipTop - 8}`, [subX, chipTop - 6, 'd'], true, 2600);
+  const inX = by.intake.x + W / 2;
+  wire(`M${inX},${chipTop - 8} L${inX},${by.intake.y + by.intake.h + 8}`, [inX, by.intake.y + by.intake.h + 6, 'u'], true, 2750);
+  const agX = by.agent.x + W / 2;
+  wire(`M${agX},${by.agent.y + by.agent.h + 6} L${agX},${band.y - 8}`, [agX, band.y - 6, 'd'], true, 2900);
+
+  // A pulse that rides the main flow once everything is drawn.
+  const pulse = document.createElementNS(NS, 'circle');
+  pulse.setAttribute('r', '7');
+  pulse.setAttribute('class', 'pulse');
+  svg.append(pulse);
+  const route = [
+    [by.intake.x + W, midY(by.intake)], [by.review.x, midY(by.review)],
+    [by.review.x + W / 2, midY(by.review)], [ap.x + W / 2, midY(ap)],
+    [sub.x + W, midY(sub)], [subX, midY(sub)], [subX, chipTop],
+  ];
+  const pts = [];
+  for (let i = 0; i < route.length - 1; i++) pts.push([route[i], route[i + 1]]);
+  const lens = pts.map(([a, b]) => Math.hypot(b[0] - a[0], b[1] - a[1]));
+  const total = lens.reduce((x, y) => x + y, 0);
+  const PULSE_FROM = 3200, PULSE_MS = 2600;
+  const placePulse = (ms) => {
+    const t = (ms - PULSE_FROM) / PULSE_MS;
+    if (t <= 0 || t >= 1) { pulse.setAttribute('opacity', '0'); return; }
+    let d = (1 - Math.pow(1 - t, 2)) * total;
+    for (let i = 0; i < pts.length; i++) {
+      if (d <= lens[i] || i === pts.length - 1) {
+        const [a, b] = pts[i];
+        const k = Math.min(1, d / lens[i]);
+        pulse.setAttribute('cx', String(a[0] + (b[0] - a[0]) * k));
+        pulse.setAttribute('cy', String(a[1] + (b[1] - a[1]) * k));
+        pulse.setAttribute('opacity', String(Math.min(1, t * 8, (1 - t) * 8)));
+        return;
+      }
+      d -= lens[i];
+    }
+  };
+
+  window.DURATION_MS = PULSE_FROM + PULSE_MS;
+  window.seek = (ms) => {
+    for (const a of document.getAnimations()) { a.pause(); a.currentTime = ms; }
+    placePulse(ms);
+    return true;
+  };
+  document.fonts.ready.then(() => { document.body.dataset.ready = '1'; });
+</script>
+</body>
+</html>

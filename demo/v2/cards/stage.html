@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Stage</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  /* The stage is laid OVER the capture. Everything is drawn except a transparent
+     hole where the real screen capture shows through, so the capture itself is
+     never re-rendered or retouched. */
+  #stage { position: absolute; inset: 0; }
+</style>
+</head>
+<body class="transparent">
+<svg id="stage" width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg"></svg>
+<script>
+  // ?mode=desktop|phone&x=&y=&w=&h=&r=&bezel=
+  const q = new URLSearchParams(location.search);
+  const mode = q.get('mode') || 'desktop';
+  const x = +q.get('x'), y = +q.get('y'), w = +q.get('w'), h = +q.get('h');
+  const r = +(q.get('r') || 16);
+  const bezel = +(q.get('bezel') || 0);
+  const svg = document.getElementById('stage');
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (name, attrs, parent = svg) => {
+    const e = document.createElementNS(NS, name);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v));
+    parent.appendChild(e);
+    return e;
+  };
+
+  const defs = el('defs', {});
+  // Hole mask: white = draw, black = leave transparent.
+  const mask = el('mask', { id: 'hole', maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: 1920, height: 1080 }, defs);
+  el('rect', { x: 0, y: 0, width: 1920, height: 1080, fill: '#fff' }, mask);
+  el('rect', { x, y, width: w, height: h, rx: r, ry: r, fill: '#000' }, mask);
+
+  const g1 = el('radialGradient', { id: 'glowA', cx: 0.18, cy: 0.08, r: 0.62 }, defs);
+  el('stop', { offset: 0, 'stop-color': '#146c64', 'stop-opacity': 0.55 }, g1);
+  el('stop', { offset: 1, 'stop-color': '#146c64', 'stop-opacity': 0 }, g1);
+  const g2 = el('radialGradient', { id: 'glowB', cx: 0.88, cy: 0.96, r: 0.58 }, defs);
+  el('stop', { offset: 0, 'stop-color': '#184668', 'stop-opacity': 0.5 }, g2);
+  el('stop', { offset: 1, 'stop-color': '#184668', 'stop-opacity': 0 }, g2);
+  const base = el('linearGradient', { id: 'base', x1: 0, y1: 0, x2: 0.55, y2: 1 }, defs);
+  el('stop', { offset: 0, 'stop-color': '#0b1a22' }, base);
+  el('stop', { offset: 1, 'stop-color': '#070d16' }, base);
+  const blur = el('filter', { id: 'shadow', x: -0.2, y: -0.2, width: 1.4, height: 1.5 }, defs);
+  el('feGaussianBlur', { stdDeviation: 34 }, blur);
+  const noise = el('filter', { id: 'grain' }, defs);
+  el('feTurbulence', { type: 'fractalNoise', baseFrequency: 0.9, numOctaves: 2, stitchTiles: 'stitch' }, noise);
+  el('feColorMatrix', { values: '0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.07 0' }, noise);
+
+  const g = el('g', { mask: 'url(#hole)' });
+  el('rect', { x: 0, y: 0, width: 1920, height: 1080, fill: 'url(#base)' }, g);
+  el('rect', { x: 0, y: 0, width: 1920, height: 1080, fill: 'url(#glowA)' }, g);
+  el('rect', { x: 0, y: 0, width: 1920, height: 1080, fill: 'url(#glowB)' }, g);
+  el('rect', { x: 0, y: 0, width: 1920, height: 1080, filter: 'url(#grain)' }, g);
+
+  if (mode === 'phone') {
+    // Device body around the screen: graphite bezel with a thin highlight.
+    const bx = x - bezel, by = y - bezel, bw = w + 2 * bezel, bh = h + 2 * bezel, br = r + bezel;
+    el('rect', { x: bx, y: by + 30, width: bw, height: bh, rx: br, fill: '#000', opacity: 0.55, filter: 'url(#shadow)' }, g);
+    const metal = el('linearGradient', { id: 'metal', x1: 0, y1: 0, x2: 1, y2: 1 }, defs);
+    el('stop', { offset: 0, 'stop-color': '#3a4150' }, metal);
+    el('stop', { offset: 0.5, 'stop-color': '#1b1f27' }, metal);
+    el('stop', { offset: 1, 'stop-color': '#2c323d' }, metal);
+    el('rect', { x: bx - 3, y: by - 3, width: bw + 6, height: bh + 6, rx: br + 3, fill: 'url(#metal)' }, g);
+    el('rect', { x: bx, y: by, width: bw, height: bh, rx: br, fill: '#07090d' }, g);
+    el('rect', { x: bx - 3, y: by - 3, width: bw + 6, height: bh + 6, rx: br + 3, fill: 'none', stroke: 'rgba(255,255,255,0.16)', 'stroke-width': 1.2 }, g);
+  } else {
+    // Floating window: soft drop shadow and a hairline edge.
+    el('rect', { x: x + 10, y: y + 34, width: w - 20, height: h, rx: r, fill: '#000', opacity: 0.6, filter: 'url(#shadow)' }, g);
+  }
+  // Hairline edge just outside the hole.
+  el('rect', { x: x - 0.75, y: y - 0.75, width: w + 1.5, height: h + 1.5, rx: r + 0.75, fill: 'none', stroke: mode === 'phone' ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.14)', 'stroke-width': 1.5 }, g);
+  document.body.dataset.ready = '1';
+</script>
+</body>
+</html>

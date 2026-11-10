@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AI shot pending</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  /* Fallback for an AI shot slot that has no file yet. Deliberately plain: it
+     must read as a slot, never as footage. */
+  .frame {
+    position: absolute; inset: 64px 96px 190px;
+    border-radius: 20px;
+    border: 1.5px dashed rgba(203,213,225,0.28);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+  }
+  .corner { position: absolute; width: 40px; height: 40px; border: 3px solid rgba(45,212,191,0.6); }
+  .tl { top: -2px; left: -2px; border-right: 0; border-bottom: 0; border-top-left-radius: 20px; }
+  .tr { top: -2px; right: -2px; border-left: 0; border-bottom: 0; border-top-right-radius: 20px; }
+  .bl { bottom: -2px; left: -2px; border-right: 0; border-top: 0; border-bottom-left-radius: 20px; }
+  .br { bottom: -2px; right: -2px; border-left: 0; border-top: 0; border-bottom-right-radius: 20px; }
+  .label { font-size: 22px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--teal-bright); }
+  h1 { margin: 22px 0 0; font-size: 84px; font-weight: 700; letter-spacing: -0.02em; }
+  .desc { margin: 26px 0 0; max-width: 1180px; font-size: 30px; line-height: 1.45; color: var(--ink-muted); font-style: italic; }
+  .file { margin-top: 30px; font-family: var(--mono); font-size: 22px; color: var(--ink-faint); }
+</style>
+</head>
+<body>
+<div class="backdrop"></div>
+<div class="frame">
+  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+  <div class="label">Placeholder</div>
+  <h1 id="title"></h1>
+  <div class="desc" id="desc"></div>
+  <div class="file" id="file"></div>
+</div>
+<script>
+  const q = new URLSearchParams(location.search);
+  document.getElementById('title').textContent = 'AI shot pending: ' + (q.get('id') || '');
+  document.getElementById('desc').textContent = q.get('desc') || '';
+  document.getElementById('file').textContent = q.get('file') || '';
+  document.fonts.ready.then(() => { document.body.dataset.ready = '1'; });
+</script>
+</body>
+</html>
