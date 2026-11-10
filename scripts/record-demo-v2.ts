@@ -635,10 +635,12 @@ async function captureAll(): Promise<CaptureFacts> {
     await rec.hold(1.6);
     await rec.tween(1.4, { el: { sel: hsel, prop: 'scrollLeft', to: toLeft }, cursor: { x: gridBody.x + gridBody.w * 0.55, y: gridBody.y + 150 } });
     await sleep(250);
-    const dl = await rectOf(page.locator('.ag-header-cell[col-id="seller_response_due_at"]').first());
+    // Frame Amount through Recommendation, so no column is cut at the edge.
+    const am = await rectOf(page.locator('.ag-header-cell[col-id="amount_cents"]').first());
     const rc = await rectOf(page.locator('.ag-header-cell[col-id="recommendation"]').first());
     const row2 = await rectOf(page.locator('.ag-center-cols-container .ag-row[row-index="2"]').first());
-    const colsRect = { x: dl.x - 10, y: dl.y - 4, w: rc.x + rc.w - dl.x + 20, h: row2.y + row2.h - dl.y + 8 };
+    const left = Math.max(am.x, gridBody.x) - 12;
+    const colsRect = { x: left, y: am.y - 4, w: rc.x + rc.w - left + 12, h: row2.y + row2.h - am.y + 8 };
     await rec.tween(1.1, { cam: rec.camFor(colsRect, 20, 1.9), cursor: { x: rc.x + rc.w * 0.5, y: row2.y + row2.h + 40 } });
     await rec.hold(3.2);
     await rec.tween(1.0, { cam: rec.full });
@@ -1063,7 +1065,8 @@ export function retime(t: Timeline, target: number): { frames: Frame[]; seconds:
  * edge. Cached, so --reuse-capture pays this once.
  */
 function normalizeFrames(srcDir: string, frames: Frame[], w: number, h: number, name: string): Map<string, string> {
-  const fixedDir = path.join(WORK, 'fixed', name);
+  // Kept inside the scene's capture folder, so a new capture never reuses old fixes.
+  const fixedDir = path.join(srcDir, '.fixed');
   const map = new Map<string, string>();
   const todo: string[] = [];
   for (const f of new Set(frames.map((x) => x.file))) {

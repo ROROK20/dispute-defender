@@ -21,6 +21,7 @@ data/*.db
 data/*.db-shm
 data/*.db-wal
 data/*.db-journal
+data/*.fixture-clock.json
 
 # generated evidence
 data/static-evidence.pdf

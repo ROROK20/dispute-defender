@@ -10,6 +10,7 @@
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { pinFixtureShift, shiftFixture } from '../src/lib/fixture-clock';
 
 type Sku = {
   sku: string;
@@ -203,8 +204,12 @@ async function main(): Promise<void> {
   try {
     const n = loadSkus(db, store.skus);
     const names = new Map(store.skus.map((s) => [s.sku, s.name]));
-    const loaded = loadFixtureHistory(db, history.disputes, names);
+    // Mock mode: move fixture dates to today, pinned for this database (src/lib/fixture-clock.ts).
+    const fresh = (db.prepare(`SELECT COUNT(*) AS n FROM disputes WHERE source = 'fixture'`).get() as { n: number }).n === 0;
+    const shift = pinFixtureShift(process.env.DATABASE_PATH ?? './data/app.db', fresh);
+    const loaded = loadFixtureHistory(db, shiftFixture(history.disputes, shift), names);
     console.log(`Schema applied. ${n} SKUs. Fixture history: ${loaded.disputes} new disputes, ${loaded.orders} new orders.`);
+    if (shift) console.log(`Mock mode: fixture dates moved forward ${shift} day(s) to the seed day.`);
   } finally {
     db.close();
   }

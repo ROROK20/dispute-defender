@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { nanoid } from 'nanoid';
 import { readInputPart } from './multipart';
+import { fixtureShiftDays, shiftFixture } from '../fixture-clock';
 
 /**
  * PAYPAL_MOCK=1 adapter (tests and CI only). Returns fixtures from
@@ -37,8 +38,8 @@ function loadFixture<T = Json>(name: string): T {
       throw new Error(`Mock fixture ${name} could not be read: ${(err as Error).message}`);
     }
   }
-  // Deep copy so callers can mutate safely.
-  return JSON.parse(JSON.stringify(cache.get(name))) as T;
+  // Deep copy so callers can mutate safely, with dates moved to the seed day (see fixture-clock.ts).
+  return shiftFixture(JSON.parse(JSON.stringify(cache.get(name))) as T, fixtureShiftDays());
 }
 
 function allDisputes(): Json[] {

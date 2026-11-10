@@ -22,7 +22,7 @@
   "dispute_amount": { "currency_code": "USD", "value": "68.00" },
   "dispute_life_cycle_stage": "CHARGEBACK",
   "dispute_channel": "INTERNAL",
-  "seller_response_due_date": "2029-12-31T23:59:59.000Z",
+  "seller_response_due_date": "2026-10-31T23:59:59.000Z",
   "messages": [
     {
       "posted_by": "BUYER",

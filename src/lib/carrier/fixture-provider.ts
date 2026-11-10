@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { CarrierEvent, CarrierProvider, CarrierTracking } from './adapter';
+import { fixtureShiftDays, shiftFixture } from '../fixture-clock';
 
 /**
  * Reads carrier scans from data/fixtures/carrier-events.json. These are not
@@ -42,8 +43,10 @@ export const fixtureCarrierProvider: CarrierProvider = {
   isFixture: true,
   async lookup(trackingNumber: string): Promise<CarrierTracking | null> {
     const file = await load();
-    const t = file.trackers?.[trackingNumber];
-    if (!t) return null;
+    const raw = file.trackers?.[trackingNumber];
+    if (!raw) return null;
+    // Mock mode moves fixture dates to the seed day; real mode is untouched (fixture-clock.ts).
+    const t = shiftFixture(raw, fixtureShiftDays());
     const events = (t.events ?? []).filter((e) => e && e.event_id && e.status && e.time);
     return {
       provider: 'carrier_fixture',

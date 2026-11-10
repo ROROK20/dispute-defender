@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
+import { fixtureShiftDays, shiftIso } from '../../src/lib/fixture-clock';
 
 /**
  * The runner's guard rails, driven by a scripted fake model (the real tools run
@@ -22,6 +23,9 @@ process.env.REVIEW_ENABLED = 'true';
 process.env.DATABASE_PATH = path.join(tmpDir, 'app.db');
 
 const DISPUTE_ID = 'PP-D-LOOP-INR';
+// Mock fixtures move to the seed day (src/lib/fixture-clock.ts); the carrier's delivery scan is 2026-10-13 in the fixture file.
+const DELIVERED_ON = shiftIso('2026-10-13', fixtureShiftDays());
+const DAY_AFTER = shiftIso('2026-10-14', fixtureShiftDays());
 const RUN_ID = 'run_loop_test';
 let db: Database.Database;
 
@@ -79,7 +83,7 @@ describe('runner guard rails with a scripted fake model', () => {
         if (names.includes('revise_sentences')) {
           calls.repair++;
           return msg(
-            [tool('revise_sentences', { sentences: [{ id: 's2', text: 'The carrier recorded delivery on 2026-10-13.', source_ids: [delivered.source_key] }] })],
+            [tool('revise_sentences', { sentences: [{ id: 's2', text: `The carrier recorded delivery on ${DELIVERED_ON}.`, source_ids: [delivered.source_key] }] })],
             'tool_use',
           );
         }
@@ -88,7 +92,7 @@ describe('runner guard rails with a scripted fake model', () => {
           return msg(
             [tool('submit_review', { sentences: [
               { id: 's1', text: 'Tracking number 9400999999999999999999 is attached to this PayPal transaction.' },
-              { id: 's2', text: 'The carrier recorded delivery on 2026-10-13.' },
+              { id: 's2', text: `The carrier recorded delivery on ${DELIVERED_ON}.` },
             ] })],
             'tool_use',
           );
@@ -120,7 +124,7 @@ describe('runner guard rails with a scripted fake model', () => {
               ],
               sentences: [
                 { id: 's1', text: 'Tracking number 9400111899223344556677 is attached to this PayPal transaction.', source_ids: [tracker.source_key] },
-                { id: 's2', text: 'The carrier recorded delivery on 2026-10-14.', source_ids: [delivered.source_key] },
+                { id: 's2', text: `The carrier recorded delivery on ${DAY_AFTER}.`, source_ids: [delivered.source_key] },
                 { id: 's3', text: 'The buyer has disputed $999.00 with us before.', source_ids: ['S1'] },
                 { id: 's4', text: 'We always ship promptly.', source_ids: [] },
               ],
@@ -144,7 +148,7 @@ describe('runner guard rails with a scripted fake model', () => {
     // s2 repaired, s3 and s4 removed after two repair rounds.
     const draft = JSON.parse(String(run.draft_json));
     expect(draft.sentences.map((s: { id: string }) => s.id)).toEqual(['s1', 's2']);
-    expect(draft.sentences[1].text).toContain('2026-10-13');
+    expect(draft.sentences[1].text).toContain(DELIVERED_ON);
     expect(draft.removed.map((r: { id: string; reason: string }) => [r.id, r.reason])).toEqual([
       ['s3', 'UNGROUNDED_TOKEN'],
       ['s4', 'NO_CITATION'],
