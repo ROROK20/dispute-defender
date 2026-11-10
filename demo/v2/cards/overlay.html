@@ -5,116 +5,171 @@
 <title>Overlay</title>
 <link rel="stylesheet" href="theme.css">
 <style>
-  /* Transparent 1920x1080 overlays: one caption cue, the disclosure lower third,
-     or the time-lapse badge. The renderer calls window.show(kind, data) and takes
-     a transparent screenshot. All three sit in the strip under the product window
-     (y >= 936), so they never cover the app. */
+  /* Transparent 1920x1080 overlays. The renderer calls window.show(kind, data)
+     and takes a transparent screenshot. Text is always set with textContent and
+     every number comes from the page or the app's API, never typed in here.
+     Layout: the product window ends at y=884; the info row (disclosure, badges,
+     stopwatch) sits just below it; captions sit at the bottom, under the row. */
   .slot { position: absolute; display: none; }
 
   #caption {
     left: 50%;
-    bottom: 22px;
+    bottom: 14px;
     transform: translateX(-50%);
-    max-width: 960px;
-    padding: 9px 24px 11px;
-    border-radius: 14px;
-    background: rgba(5, 9, 16, 0.66);
+    max-width: 1180px;
+    padding: 6px 26px 9px;
+    border-radius: 16px;
+    background: rgba(5, 9, 16, 0.72);
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
     text-align: center;
-    font-size: 33px;
-    line-height: 1.3;
-    font-weight: 600;
-    letter-spacing: -0.003em;
+    font-size: 44px;
+    line-height: 1.18;
+    font-weight: 650;
+    letter-spacing: -0.006em;
     white-space: nowrap;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   }
 
-  #disclosure {
-    left: 30px;
-    bottom: 26px;
-    padding: 11px 16px 12px 14px;
-    border-radius: 12px;
-    background: rgba(5, 9, 16, 0.6);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  }
-  #disclosure .label {
-    display: flex;
+  .info {
+    height: 38px;
     align-items: center;
-    gap: 8px;
-    font-size: 12.5px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: #fbbf24;
-    margin-bottom: 5px;
+    gap: 10px;
+    padding: 0 14px;
+    border-radius: 10px;
+    background: rgba(5, 9, 16, 0.62);
+    font-size: 24px;
+    font-weight: 600;
+    white-space: nowrap;
   }
-  #disclosure .label i {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: #fbbf24;
-    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.22);
-  }
-  #disclosure .line { font-size: 16.5px; line-height: 1.34; font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .info .lab { font-size: 15px; font-weight: 750; letter-spacing: 0.13em; text-transform: uppercase; }
+  .info.amber { box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.38); }
+  .info.amber .lab { color: #fbbf24; }
+  .info.teal { box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.42); }
+  .info .sub { color: var(--ink-muted); font-weight: 500; font-size: 21px; }
+  .info .num { font-variant-numeric: tabular-nums; font-family: var(--mono); font-weight: 650; font-size: 26px; }
 
-  #badge {
-    right: 30px;
-    bottom: 26px;
-    display: none;
+  #big {
+    transform: translate(-50%, -50%);
+    padding: 26px 44px 30px;
+    border-radius: 26px;
+    background: rgba(6, 12, 20, 0.86);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), inset 0 0 0 1.5px rgba(45, 212, 191, 0.45);
+    text-align: center;
+  }
+  #big .t { font-size: 96px; font-weight: 780; letter-spacing: -0.03em; line-height: 1; }
+  #big .s { margin-top: 14px; font-size: 28px; color: var(--ink-muted); }
+
+  #callout {
+    flex-direction: column;
+    justify-content: center;
+    padding: 30px 34px;
+    border-radius: 22px;
+    background: #0b131c;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), inset 0 0 0 1.5px rgba(148, 163, 184, 0.28);
+  }
+  #callout .kick { font-size: 22px; font-weight: 750; letter-spacing: 0.14em; text-transform: uppercase; color: var(--teal-bright); }
+  #callout .bignum { font-size: 112px; font-weight: 780; letter-spacing: -0.03em; line-height: 1; margin: 6px 0 10px; font-variant-numeric: tabular-nums; }
+  #callout .line { font-size: 30px; line-height: 1.32; color: var(--ink-muted); }
+  #callout .row { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; margin-top: 14px; padding: 8px 16px; border-radius: 14px; }
+  #callout .row .l { font-size: 32px; color: var(--ink-muted); }
+  #callout .row .v { font-size: 60px; font-weight: 760; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  #callout .row.hot { background: rgba(45, 212, 191, 0.14); box-shadow: inset 0 0 0 1.5px rgba(45, 212, 191, 0.55); }
+  #callout .row.hot .l { color: var(--ink); }
+  #callout .foot { margin-top: 18px; font-size: 24px; line-height: 1.35; color: var(--ink-muted); }
+
+  #amber {
+    transform: translate(-50%, 0);
     align-items: center;
     gap: 12px;
-    padding: 12px 18px 12px 14px;
-    border-radius: 12px;
-    background: rgba(5, 9, 16, 0.6);
-    box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.35);
-    font-size: 21px;
-    font-weight: 650;
-    letter-spacing: -0.005em;
+    padding: 12px 22px;
+    border-radius: 14px;
+    background: rgba(28, 18, 2, 0.92);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35), inset 0 0 0 2px rgba(251, 191, 36, 0.85);
+    color: #fde68a;
+    font-size: 30px;
+    font-weight: 700;
+    white-space: nowrap;
   }
-  #badge svg { flex: none; }
-  #badge .sub { color: var(--ink-muted); font-weight: 500; }
+  #amber i { width: 12px; height: 12px; border-radius: 50%; background: #fbbf24; box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.25); }
+
+  #words {
+    transform: translate(-50%, -50%);
+    gap: 26px;
+    padding: 16px 34px 18px;
+    border-radius: 20px;
+    background: rgba(6, 12, 20, 0.86);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), inset 0 0 0 1.5px rgba(45, 212, 191, 0.45);
+    font-size: 56px;
+    font-weight: 760;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+  #words span:last-child { color: var(--teal-bright); }
 </style>
 </head>
 <body class="transparent">
 <div id="caption" class="slot"></div>
-<div id="disclosure" class="slot">
-  <div class="label"><i></i><span id="disclosure-label"></span></div>
-  <div id="disclosure-lines"></div>
-</div>
-<div id="badge" class="slot">
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <path d="M4 5l8 7-8 7z" fill="rgba(45,212,191,.25)"/><path d="M12 5l8 7-8 7z" fill="rgba(45,212,191,.25)"/>
-  </svg>
-  <span id="badge-main"></span><span id="badge-sub" class="sub"></span>
-</div>
+<div id="info" class="slot info"></div>
+<div id="big" class="slot"><div class="t"></div><div class="s"></div></div>
+<div id="callout" class="slot"></div>
+<div id="amber" class="slot"><i></i><span></span></div>
+<div id="words" class="slot"></div>
 <script>
-  // Text is always set with textContent: nothing here is parsed as HTML.
-  window.show = (kind, data) => {
-    for (const s of document.querySelectorAll('.slot')) s.style.display = 'none';
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  // Two fixed inline icons; no data is ever written as HTML.
+  const ICONS = {
+    clock: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>',
+    ff: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linejoin="round"><path d="M4 5l8 7-8 7z" fill="rgba(45,212,191,.25)"/><path d="M12 5l8 7-8 7z" fill="rgba(45,212,191,.25)"/></svg>',
+  };
+  const place = (node, d, display) => {
+    node.style.cssText = `left:${d.x}px;top:${d.y}px;${d.w ? `width:${d.w}px;` : ''}${d.h ? `height:${d.h}px;` : ''}display:${display};`;
+  };
+  window.show = (kind, d) => {
+    for (const s of document.querySelectorAll('.slot')) s.style.cssText = 'display:none';
     if (kind === 'caption') {
       const c = document.getElementById('caption');
       c.replaceChildren();
-      data.lines.forEach((line, i) => {
-        if (i) c.appendChild(document.createElement('br'));
-        c.appendChild(document.createTextNode(line));
-      });
-      c.style.display = 'block';
-    } else if (kind === 'disclosure') {
-      document.getElementById('disclosure-label').textContent = data.label;
-      const box = document.getElementById('disclosure-lines');
-      box.replaceChildren(...data.lines.map((t) => {
-        const d = document.createElement('div');
-        d.className = 'line';
-        d.textContent = t;
-        return d;
-      }));
-      document.getElementById('disclosure').style.display = 'block';
-    } else if (kind === 'badge') {
-      document.getElementById('badge-main').textContent = data.main;
-      document.getElementById('badge-sub').textContent = data.sub;
-      document.getElementById('badge').style.display = 'flex';
+      d.lines.forEach((line, i) => { if (i) c.appendChild(document.createElement('br')); c.appendChild(document.createTextNode(line)); });
+      c.style.cssText = 'display:block';
+    } else if (kind === 'info') {
+      const n = document.getElementById('info');
+      n.className = `slot info ${d.tone || ''}`;
+      n.replaceChildren();
+      if (d.icon && ICONS[d.icon]) { const s = el('span'); s.innerHTML = ICONS[d.icon]; n.appendChild(s); }
+      if (d.label) n.appendChild(el('span', 'lab', d.label));
+      n.appendChild(el('span', d.icon === 'clock' ? 'num' : '', d.text));
+      if (d.sub) n.appendChild(el('span', 'sub', d.sub));
+      n.style.cssText = `display:flex;top:${d.y}px;${d.side === 'right' ? `right:${1920 - d.x}px` : `left:${d.x}px`};`;
+    } else if (kind === 'big') {
+      const b = document.getElementById('big');
+      b.querySelector('.t').textContent = d.text;
+      b.querySelector('.s').textContent = d.sub || '';
+      place(b, d, 'block');
+    } else if (kind === 'callout') {
+      const c = document.getElementById('callout');
+      c.replaceChildren();
+      if (d.kicker) c.appendChild(el('div', 'kick', d.kicker));
+      if (d.big) c.appendChild(el('div', 'bignum', d.big));
+      for (const l of d.lines || []) c.appendChild(el('div', 'line', l));
+      for (const r of d.rows || []) {
+        const row = el('div', `row${r.hot ? ' hot' : ''}`);
+        row.append(el('span', 'l', r.label), el('span', 'v', r.value));
+        c.appendChild(row);
+      }
+      if (d.foot) c.appendChild(el('div', 'foot', d.foot));
+      place(c, d, 'flex');
+    } else if (kind === 'amber') {
+      const a = document.getElementById('amber');
+      a.querySelector('span').textContent = d.text;
+      place(a, d, 'flex');
+    } else if (kind === 'words') {
+      const w = document.getElementById('words');
+      w.replaceChildren(...d.words.map((t) => el('span', '', t)));
+      place(w, d, 'flex');
     }
     return true;
   };
-  document.body.dataset.ready = '1';
+  document.fonts.ready.then(() => { document.body.dataset.ready = '1'; });
 </script>
 </body>
 </html>

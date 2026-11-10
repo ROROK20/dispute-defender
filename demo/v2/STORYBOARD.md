@@ -34,9 +34,17 @@ These rules override every creative choice below.
 | J1 | 2:20–2:27 | AI (Seedance 2.0) | Morning. The same studio, now tidy. The seller calmly packs an order with a coffee. | "Dispute Defender won't invent facts, it shows you the math, and it helps stop the next dispute." |
 | Z | 2:27–2:33 | Motion graphics (HTML) | End card: Dispute Defender, the repo URL, and "Built with Claude · PayPal Disputes, Orders v2 and Webhooks APIs (fixtures in this recording)". | "The code is at the link below." |
 
-## Rendering
+## Rendering (v3 cut)
 
-`scripts/record-demo-v2.ts` builds the cut from this storyboard. The narration lives in that script and is exported to `demo/v2/narration.json`. Scene W is rendered only when a real analysed dispute recommends something other than FIGHT. In the mock fixtures every staged dispute is a strong case, so W and its sentence are cut, as rule 4 requires. The manifest (`demo/out/demo-v2.json`) records this and every other fallback.
+The v3 cut follows `demo/v2/JUDGE_REVIEW.md`. Its narration is `demo/v2/VOICE_SCRIPT.md`, byte for byte, and a unit test keeps the script and the renderer in step. The codes are the scene ids, and recordings go in `demo/v2/voice/<CODE>.wav`.
+
+Order: A1 (AI, about 3 s) > O1 (inbox, trigger, stopwatch) > O2 (the real run, sped up, landing on the measured "Draft ready") > O3 (the cited draft) > T (1.5 s lockup) > A2 (the problem, over the real inbox) > C > D > E > F > REJ > G > W > H > I > K > R (recap) > J1 > Z.
+
+- **Real values only.** Every number on screen comes from the page or the app's API. That covers the stopwatch, the dollar callouts, the weak case's numbers and the "Draft ready in N s" card.
+- **Beats follow the voice.** Visual beats are pinned to the words that describe them. When a read is too fast for a beat, silence is opened at the sentence pause. Voices are never sped up, and the manifest lists any gap.
+- **REJ is shown only if real.** It appears only if the app's own checker rejected the hand-edited date and nothing was submitted.
+- **W is shown only if real.** It appears only if a real run on the weak fixture dispute recommended something other than FIGHT. Otherwise either scene is cut, per rule 4.
+- **Running time.** The cut must stay under 2:50. If a slower read pushes it over, `demo/out/demo-v2.json` lists what to trim.
 
 ## Higgsfield prompts
 

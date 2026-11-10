@@ -64,8 +64,8 @@ describe('fixture clock: the mock fixtures after the shift', () => {
     const now = new Date(seed);
     const days = shiftDaysFor(now);
 
-    it(`open disputes are due 3 to 13 days after seeding, with their dates in order (seeded ${seed.slice(0, 10)})`, () => {
-      for (const f of ['dispute-inr.json', 'dispute-snad.json', 'dispute-unauth.json']) {
+    it(`open disputes are due 1 to 13 days after seeding (the INR one within 48 h), with their dates in order (seeded ${seed.slice(0, 10)})`, () => {
+      for (const f of ['dispute-inr.json', 'dispute-snad.json', 'dispute-unauth.json', 'dispute-inr-weak.json']) {
         const raw = read(`data/fixtures/mock-paypal/${f}`) as Dispute;
         const d = shiftFixture(raw, days);
         const due = t(d.seller_response_due_date);
@@ -73,8 +73,10 @@ describe('fixture clock: the mock fixtures after the shift', () => {
         const paid = t(d.disputed_transactions[0].create_time);
         const posts = d.messages.map((m) => t(m.time_posted));
 
-        expect((due - now.getTime()) / DAY, `${f} due`).toBeGreaterThan(3);
-        expect((due - now.getTime()) / DAY, `${f} due`).toBeLessThan(13);
+        // The INR dispute is the urgent one: due within 48 h of seeding, so the inbox shows the clock running.
+        const [lo, hi] = f === 'dispute-inr.json' ? [1, 2] : [3, 13];
+        expect((due - now.getTime()) / DAY, `${f} due`).toBeGreaterThan(lo);
+        expect((due - now.getTime()) / DAY, `${f} due`).toBeLessThan(hi);
         expect(created, `${f} opened in the past`).toBeLessThan(now.getTime());
         expect(paid).toBeLessThan(posts[0]);
         posts.forEach((p, i) => i && expect(p).toBeGreaterThanOrEqual(posts[i - 1]));

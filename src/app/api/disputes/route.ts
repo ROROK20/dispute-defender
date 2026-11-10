@@ -31,7 +31,10 @@ export async function GET(req: NextRequest) {
     const rows = db
       .prepare(
         `SELECT d.id, d.source, d.reason, d.status, d.stage, d.amount_cents, d.currency, d.sku,
-                s.name AS sku_name, o.buyer_name, d.seller_response_due_at, d.strength_score, d.recommendation,
+                s.name AS sku_name,
+                -- Same fallback as the detail view: PayPal's dispute payload names the buyer even without a local order.
+                COALESCE(o.buyer_name, json_extract(d.raw_json, '$.disputed_transactions[0].buyer.name')) AS buyer_name,
+                d.seller_response_due_at, d.strength_score, d.recommendation,
                 d.outcome, d.pp_created_at
            FROM disputes d
            LEFT JOIN skus s ON s.sku = d.sku

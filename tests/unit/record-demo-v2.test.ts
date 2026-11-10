@@ -1,7 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { cueTexts, timeCues, retime, NARRATION, XFADE, type Timeline } from '../../scripts/record-demo-v2';
+import fs from 'node:fs';
+import path from 'node:path';
+import { cueTexts, timeCues, retime, sliceTimeline, NARRATION, XFADE, type Timeline } from '../../scripts/record-demo-v2';
 
 const words = (s: string) => s.split(/\s+/).filter(Boolean);
+
+describe('narration', () => {
+  it('matches demo/v2/VOICE_SCRIPT.md byte for byte, code for code', () => {
+    const md = fs.readFileSync(path.join(process.cwd(), 'demo/v2/VOICE_SCRIPT.md'), 'utf8');
+    const rows = [...md.matchAll(/^\| ([A-Z][A-Z0-9]*) \| (.+) \|$/gm)].map((m) => [m[1], m[2].replace(/^\*\(maybe\)\*\s*/, '')]);
+    expect(rows.length).toBeGreaterThan(10);
+    expect(Object.fromEntries(rows)).toEqual({ ...NARRATION });
+  });
+});
 
 describe('cueTexts', () => {
   it('keeps every word, in order, for every narration line', () => {
@@ -11,27 +22,33 @@ describe('cueTexts', () => {
     }
   });
 
-  it('never makes more than two lines, and keeps lines readable', () => {
+  it('never makes more than two lines, and keeps lines short enough for 44 px', () => {
     for (const text of Object.values(NARRATION)) {
       for (const cue of cueTexts(text)) {
         expect(cue.length).toBeLessThanOrEqual(2);
-        for (const line of cue) expect(line.length).toBeLessThanOrEqual(50);
+        for (const line of cue) expect(line.length).toBeLessThanOrEqual(40);
       }
     }
   });
 
   it('starts a new cue at each sentence, not every N words', () => {
-    const cues = cueTexts("It's eleven at night. A buyer just opened a dispute, and the clock is already running.");
-    expect(cues.map((c) => c.join(' '))).toEqual([
-      "It's eleven at night.",
-      'A buyer just opened a dispute, and the clock is already running.',
-    ]);
+    const cues = cueTexts('Eleven at night. A buyer just opened a PayPal dispute.');
+    expect(cues.map((c) => c.join(' '))).toEqual(['Eleven at night.', 'A buyer just opened a PayPal dispute.']);
   });
 
   it('splits a long sentence at a clause boundary', () => {
-    const cues = cueTexts(NARRATION.F).map((c) => c.join(' '));
-    expect(cues.every((c) => c.length <= 84)).toBe(true);
+    const cues = cueTexts(NARRATION.D).map((c) => c.join(' '));
+    expect(cues.every((c) => c.length <= 60)).toBe(true);
     expect(cues.some((c) => c.endsWith(','))).toBe(true);
+  });
+
+  it('never leaves a short orphan clause on its own', () => {
+    for (const text of Object.values(NARRATION)) {
+      const cues = cueTexts(text).map((c) => c.join(' '));
+      for (const c of cues) if (/,$/.test(c)) expect(c.length).toBeGreaterThanOrEqual(22);
+    }
+    // "Every number," must not stand alone.
+    expect(cueTexts(NARRATION.F).map((c) => c.join(' '))).not.toContain('Every number,');
   });
 });
 
@@ -95,3 +112,45 @@ describe('retime', () => {
     expect(r.seconds).toBeCloseTo(14, 1);
   });
 });
+
+describe('retime with anchors', () => {
+  const f = (kind: 'step' | 'hold' | 'real', dur: number, i: number) => ({ file: `${i}.jpg`, dur, kind });
+
+  it('lands each anchored frame on its cue time, stretching only the holds around it', () => {
+    // hold | steps (click) | hold (drawer) | steps (close) | hold
+    const t: Timeline = {
+      id: 'F', kind: 'desktop', size: { w: 1536, h: 864 },
+      frames: [f('hold', 1, 0), f('step', 0.5, 1), f('hold', 2, 2), f('step', 0.5, 3), f('hold', 1, 4)],
+    };
+    const r = retime(t, 12, [{ at: 1, time: 3 }, { at: 3, time: 7 }]);
+    expect(r.seconds).toBeCloseTo(12, 5);
+    expect(r.anchors.map((a) => a.landed)).toEqual([3, 7]);
+    expect(r.frames[1].dur).toBe(0.5);
+    expect(r.frames[3].dur).toBe(0.5);
+  });
+
+  it('reports an anchor it could not reach instead of hiding it', () => {
+    const t: Timeline = { id: 'X', kind: 'desktop', size: { w: 1536, h: 864 }, frames: [f('step', 2, 0), f('hold', 1, 1)] };
+    const r = retime(t, 6, [{ at: 1, time: 0.5 }]);
+    expect(r.anchors[0].landed).toBeGreaterThan(r.anchors[0].wanted);
+  });
+});
+
+describe('sliceTimeline', () => {
+  it('re-bases marks, measures the sped-up window from wall clocks, and adds an elastic tail', () => {
+    const frames = [
+      { file: 'a.jpg', dur: 1, kind: 'hold' as const, w: 0 },
+      { file: 'b.jpg', dur: 1 / 30, kind: 'step' as const, w: 1000 },
+      { file: 'c.jpg', dur: 2, kind: 'lapse' as const, w: 2000 },
+      { file: 'd.jpg', dur: 3, kind: 'lapse' as const, w: 4000 },
+      { file: 'e.jpg', dur: 1, kind: 'hold' as const, w: 7000 },
+    ];
+    const t: Timeline = { id: 'D', kind: 'desktop', size: { w: 1536, h: 864 }, frames, marks: { clicked: { at: 1 }, runDone: { at: 4 } } };
+    const s = sliceTimeline(t, 1, 5, 0.5);
+    expect(s.frames.map((x) => x.file)).toEqual(['b.jpg', 'c.jpg', 'd.jpg', 'e.jpg', 'e.jpg']);
+    expect(s.frames[4]).toMatchObject({ kind: 'hold', dur: 0.5 });
+    expect(s.marks).toEqual({ clicked: { at: 0 }, runDone: { at: 3 } });
+    expect(s.lapse).toEqual({ from: 1, to: 3, real_s: 5 });
+  });
+});
+

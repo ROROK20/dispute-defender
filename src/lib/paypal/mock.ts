@@ -23,7 +23,7 @@ export interface MockResponse {
 }
 
 const FIXTURE_DIR = path.join(process.cwd(), 'data', 'fixtures', 'mock-paypal');
-const DISPUTE_FIXTURES = ['dispute-inr.json', 'dispute-snad.json', 'dispute-unauth.json'] as const;
+const DISPUTE_FIXTURES = ['dispute-inr.json', 'dispute-snad.json', 'dispute-unauth.json', 'dispute-inr-weak.json'] as const;
 
 type Json = Record<string, unknown>;
 
@@ -78,12 +78,14 @@ function hateoas(href: string): Json {
 }
 
 /**
- * Mock-only shipping details for the SNAD and UNAUTHORISED fixture disputes, so
- * each mock capture resolves to an order built from its own dispute (SKU,
- * amount, buyer) instead of the INR order. Tracking numbers point at entries
- * in data/fixtures/carrier-events.json. The INR capture keeps order.json.
+ * Mock-only shipping details for the SNAD, UNAUTHORISED and weak-INR fixture
+ * disputes, so each mock capture resolves to an order built from its own
+ * dispute (SKU, amount, buyer) instead of the INR order. Tracking numbers point
+ * at entries in data/fixtures/carrier-events.json. The INR capture keeps
+ * order.json. `trackerStatus` is what PayPal's tracker reports for that
+ * capture; it defaults to tracker.json's DELIVERED.
  */
-const MOCK_SHIPPING: Record<string, { address: Json; tracking: string; email: string }> = {
+const MOCK_SHIPPING: Record<string, { address: Json; tracking: string; email: string; trackerStatus?: string }> = {
   '3TC66912BV448105W': {
     address: { address_line_1: '3104 Bryant Ave S', admin_area_2: 'Minneapolis', admin_area_1: 'MN', postal_code: '55408', country_code: 'US' },
     tracking: '9400111899223344556752',
@@ -93,6 +95,13 @@ const MOCK_SHIPPING: Record<string, { address: Json; tracking: string; email: st
     address: { address_line_1: '2860 Gilpin St', admin_area_2: 'Denver', admin_area_1: 'CO', postal_code: '80205', country_code: 'US' },
     tracking: '9405511899223344556707',
     email: 'buyer.unauth@example.com',
+  },
+  // The weak case: shipped, scanned twice, never delivered (carrier "Arriving Late").
+  '4KW71839DN552610A': {
+    address: { address_line_1: '1712 Linden Ave', admin_area_2: 'Nashville', admin_area_1: 'TN', postal_code: '37212', country_code: 'US' },
+    tracking: '9400111899223344556691',
+    email: 'buyer.inrweak@example.com',
+    trackerStatus: 'SHIPPED',
   },
 };
 
@@ -254,6 +263,7 @@ export async function mockPaypalRequest(req: MockRequest): Promise<MockResponse>
       transaction_id: transactionId,
       tracking_number: trackingNumber,
       ...(shipped ? { shipment_date: shipped } : {}),
+      ...(ship?.trackerStatus ? { status: ship.trackerStatus } : {}),
     });
   }
 
