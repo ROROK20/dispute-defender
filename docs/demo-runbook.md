@@ -19,7 +19,7 @@ Target length: under 2:45. Captions on throughout. Voiceover recorded separately
 
 | Time | Screen | Voiceover (gist) |
 |---|---|---|
-| 0:00–0:15 | Seller inbox, empty-ish, evening light | One seller, a $40k/yr store, lost 3 of 5 disputes last quarter: a missed deadline, the wrong evidence, an angry paragraph. |
+| 0:00–0:15 | Seller inbox, empty-ish, evening light | Picture a small seller who handles disputes alone at night. Three avoidable ways to lose: a missed deadline, the wrong evidence, an angry paragraph. |
 | 0:15–0:25 | Buyer window: open an INR dispute on the JT-107 order | "A chargeback just landed. Watch it get answered before this video ends." |
 | 0:25–0:35 | Inbox: webhook row appears, stopwatch starts | Signed webhook, verified with PayPal. The clock starts at receipt. |
 | 0:35–1:05 | Detail view: live agent trace | It pulls the dispute, the order, PayPal tracking and the buyer thread, then scores the evidence against a published rubric. |

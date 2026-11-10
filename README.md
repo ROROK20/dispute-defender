@@ -1,10 +1,10 @@
 # DisputeDefender
 
-**A chargeback just landed. DisputeDefender drafts a sourced response before the seller has finished reading the email.**
+**A chargeback just landed. DisputeDefender drafts a fully sourced response, and the seller decides whether it gets sent.**
 
 DisputeDefender is a dispute agent for small PayPal sellers. A `CUSTOMER.DISPUTE.CREATED` webhook starts a Claude tool-use agent. The agent pulls the dispute, the transaction, the tracking and the buyer's messages from PayPal. It scores the evidence against a published rubric and checks the cost of fighting against the cost of refunding. If fighting is worth it, it drafts a response where **every sentence cites a stored source**. The seller approves once, and only then does anything go to PayPal. A Patterns view looks across disputes for root causes, so the same dispute is less likely to happen again.
 
-**Who it's for:** solo and 1–10 person e-commerce sellers on Etsy, Shopify, eBay and independent stores that take PayPal. They handle disputes themselves, often late at night. They usually lose winnable cases for one of three reasons:
+**Who it's for:** solo and 1–10 person e-commerce sellers on Etsy, Shopify, eBay and independent stores that take PayPal. They handle disputes themselves, often late at night. There are three avoidable ways to lose a winnable case:
 
 1. They miss the response deadline.
 2. They upload the wrong kind of evidence, such as a screenshot where a carrier record is needed.
@@ -18,10 +18,8 @@ Enterprise chargeback tools are priced for larger merchants. DisputeDefender is 
 
 ## Demo
 
-![Demo](docs/demo.gif)
-
-- **Hosted demo:** `<RENDER_URL>`. Click **Trigger demo dispute** to run the full loop on a real staged sandbox dispute.
 - **Video (under 3 min):** `<YOUTUBE_URL>`
+- **Try it yourself:** follow [Setup](#setup). Mock mode needs no credentials; the full loop needs a PayPal sandbox app and an Anthropic key.
 
 The stopwatch in the UI shows **measured** elapsed times only:
 
@@ -132,7 +130,7 @@ The full component breakdown, schema and API contract are in [`ARCHITECTURE.md`]
 | Grid | **AG Grid Community** v34 (`ag-grid-community`, `ag-grid-react`) |
 | PDF | **@react-pdf/renderer** |
 | Data | **SQLite** via `better-sqlite3` (WAL mode), `zod`, `nanoid`, `date-fns` |
-| Hosting | **Render** web service through the `render.yaml` blueprint |
+| Hosting (optional) | **Render** web service through the included `render.yaml` blueprint |
 | API tooling | **Postman** collection and sandbox environment in `postman/` |
 | Quality | TypeScript, ESLint, Vitest, Playwright, gitleaks pre-commit |
 
@@ -164,7 +162,7 @@ PayPal calls are answered from `data/fixtures/mock-paypal`, and the agent is a *
 ### 1. Install
 
 ```bash
-git clone <REPO_URL> dispute-defender
+git clone https://github.com/ROROK20/dispute-defender.git dispute-defender
 cd dispute-defender
 nvm use
 npm ci
@@ -190,7 +188,7 @@ cp .env.example .env
 | `PUBLIC_BASE_URL` | Public HTTPS URL of this app (ngrok or Render) |
 | `DISPUTE_FEE_USD` | Your own dispute fee. Defaults to `0`; no fee number is hard-coded |
 | `SELLER_TIME_COST_USD` | What an hour of your time is worth for EV math (default `15`) |
-| `DEMO_TRIGGER_PER_IP_PER_MIN` / `DEMO_TRIGGER_GLOBAL_PER_HOUR` | Demo-trigger rate limits (`1` / `10`) |
+| `DEMO_TRIGGER_PER_IP_PER_MIN` / `DEMO_TRIGGER_GLOBAL_PER_HOUR` | Demo-trigger rate limits (`.env.example` sets `3` / `30`; the code falls back to `1` / `10` when unset) |
 | `POLL_INTERVAL_MS` | Poller interval (`30000`) |
 | `PAYPAL_MOCK` / `ANTHROPIC_MOCK` | **Tests and CI only.** `1` uses fixtures and shows a red "MOCK MODE" banner |
 
@@ -286,7 +284,7 @@ Import `postman/DisputeDefender.postman_collection.json` and `postman/DisputeDef
 | **Claude Sonnet** (Anthropic Messages API, tool use) | `src/lib/agent/runner.ts`, `src/lib/patterns/mine.ts` | Runs the multi-step agent: calls read-only PayPal-backed tools, classifies the reason code, explains the deterministic score and EV result, and drafts sentences with source ids through the `submit_analysis` tool. Also tags buyer messages with themes from a closed list for pattern mining. |
 | **Claude Opus** | `src/lib/agent/review.ts` | Optional reword-only review of the final draft. It cannot add or remove sources, and its output is discarded if it fails the citation check. |
 
-**Development:** this codebase was written with AI coding assistance (Claude).
+**Development:** almost all of this codebase was written by AI (Claude, through the Claude Code CLI), under our direction. A multi-agent pipeline generated the first version during the hackathon, and the rest was finished in a Claude Code session. The tests and documentation were also written with Claude.
 
 **What the AI does not do:** it does not compute the strength score, the expected value, or the pattern counts. All three are deterministic code. It never calls a PayPal-mutating endpoint; those run only from seller-approved routes.
 

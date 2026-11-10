@@ -56,16 +56,16 @@ _61 words ≈ 0:24 speaking + 3s pause_
 
 **Say:**
 
-> It is one Next.js app with an AG Grid inbox. Claude Sonnet runs the agent, and a Claude Opus pass is only allowed to reword sentences. React PDF renderer builds the packet, and the data lives in SQLite or Postgres on Render. On the PayPal side it uses Orders v2, Add Tracking, Webhooks and the Disputes API, from provide-evidence to accept-claim and make-offer. Every PayPal call is logged with its debug ID.
+> It is one Next.js app with an AG Grid inbox. Claude Sonnet runs the agent, and a Claude Opus pass is only allowed to reword sentences. React PDF renderer builds the packet, and the data lives in SQLite. On the PayPal side it uses Orders v2, Add Tracking, Webhooks and the Disputes API, from provide-evidence to accept-claim and make-offer. Every PayPal call is logged with its debug ID.
 
 _72 words ≈ 0:29 speaking_
 
 ## Scene 6 — Why it matters, and close  ·  2:21–2:46
 
-**On screen:** The approval view on a phone-width screen, then the hosted demo page with the 'Trigger demo dispute' button and the public repo link.
+**On screen:** The approval view on a phone-width screen, then the 'Trigger demo dispute' button and the public repo link.
 
 **Say:**
 
-> It uses PayPal's platform and AI in depth. It is a complete product a seller can approve from their phone, it solves a real problem for a specific audience, and it does something new: it won't invent facts, it tells you when you'll lose, and it helps prevent the next dispute. This is DisputeDefender. Try the hosted demo at the link below.
+> It uses PayPal's platform and AI in depth. It is a complete product a seller can approve from their phone, it solves a real problem for a specific audience, and it does something new: it won't invent facts, it tells you when you'll lose, and it helps prevent the next dispute. This is DisputeDefender. The code and setup steps are at the link below.
 
 _62 words ≈ 0:25 speaking_

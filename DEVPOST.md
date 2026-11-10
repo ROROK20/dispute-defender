@@ -2,7 +2,7 @@
 
 A chargeback just landed. Watch it get answered before this video ends.
 
-That sentence is the whole pitch, and it comes from a specific person. Picture a solo seller running a small handmade-apparel store on PayPal (a hypothetical, not a real customer). They handle disputes themselves, at night, after the packing is done. For a store like that, a $60 chargeback can cost a day's margin plus a fee. When they lose a case they could have won, it's usually for one of three reasons:
+That sentence is the whole pitch. Picture a solo seller running a small handmade-apparel store on PayPal (a hypothetical, not a real customer). They handle disputes themselves, at night, after the packing is done. There are three avoidable ways for a seller like that to lose a case they could have won:
 
 1. **They miss the response deadline.**
 2. **They send the wrong kind of evidence**, like a screenshot where PayPal wanted a carrier record.
@@ -57,7 +57,7 @@ The inbox is an AG Grid table of every dispute, with deadline countdowns, status
 
 **PayPal is the backbone, not an add-on.** We use the sandbox across several parts of the platform:
 
-- **Disputes API v1:** list and show, `provide-evidence` (multipart form with JSON and a PDF), `accept-claim`, `make-offer`, `send-message`, plus the sandbox-only `require-evidence` and `adjudicate` endpoints. These let us run the whole lifecycle on camera: open, evidence, resolution.
+- **Disputes API v1:** list and show, `provide-evidence` (multipart form with JSON and a PDF), `accept-claim`, `make-offer`, `send-message`, plus the sandbox-only `require-evidence` and `adjudicate` endpoints. These make it possible to show the whole lifecycle in one video: open, evidence, resolution.
 - **Webhooks** for dispute created, updated and resolved, with real signature verification.
 - **Orders v2 + Checkout JS SDK** (`@paypal/react-paypal-js`). A small fictional storefront, "Juniper Thread Co.", creates real captured sandbox orders, so every dispute traces back to a real PayPal transaction ID.
 - **Add Tracking API** (`/v1/shipping/trackers-batch`). Tracking gets attached when an order is captured, so "item not received" evidence comes from PayPal's own records.
@@ -75,43 +75,54 @@ Every PayPal call is logged with its method, path, status, duration and `paypal-
 - **Data:** SQLite (better-sqlite3) holds disputes, agent runs, steps, sources, decisions and PayPal calls.
 - **PDF:** `@react-pdf/renderer` builds the evidence packet.
 - **Grid:** AG Grid Community.
-- **Hosting:** Render, with a `render.yaml` blueprint, gives judges a stable HTTPS URL for webhooks and a clickable demo.
+- **Running it:** the repo has full setup steps, plus a mock mode that needs no credentials. A `render.yaml` blueprint is included for anyone who wants a hosted copy.
 - **Replay:** a Postman collection lets anyone repeat each PayPal call the agent makes.
 
-**Order of work.** First we got a hand-made PDF accepted by `provide-evidence` with a 200 response. Only then did we start on the AI. The rest followed in order: real orders and webhooks, the agent with citations, scoring and the inbox, then patterns and polish.
+**How the code got written.** Almost all of this code was written by AI, under our direction. A multi-agent pipeline drove Claude through the Claude Code CLI to generate the first version, then the rest was finished in a Claude Code session. See "AI tools used" below for the details.
 
 ## Challenges we ran into
 
-- **You can't create a dispute through the API.** Every real dispute has to be opened by a sandbox buyer in the sandbox Resolution Center, against an order paid with the PayPal wallet. We wrote a staging runbook (`docs/sandbox-staging.md`) and keep a pool of pre-staged real disputes. The "Trigger demo dispute" button takes the oldest real one from that pool. It is labeled "Demo trigger (not a PayPal webhook)". If the pool is empty, it returns 409 with restocking instructions and never fakes a dispute.
-- **The webhook simulator can't drive the full flow.** Its events carry fake resource IDs, so they fail signature verification and return 404 when we look up the dispute. The 30-second poller and the demo trigger are our honest fallbacks.
+- **You can't create a dispute through the API.** Every real dispute has to be opened by a sandbox buyer in the sandbox Resolution Center, against an order paid with the PayPal wallet. We wrote a staging runbook (`docs/sandbox-staging.md`), and the app draws from a pool of staged real disputes. The "Trigger demo dispute" button takes the oldest real one from that pool. It is labeled "Demo trigger (not a PayPal webhook)". If the pool is empty, it returns 409 with restocking instructions and never fakes a dispute.
+- **The webhook simulator isn't enough for the full flow.** Its events carry sample data rather than a real dispute, so we designed around them. The 30-second poller and the demo trigger are our honest fallbacks.
 - **Signature verification depends on the exact bytes.** PayPal expects `webhook_event` to be the original raw JSON. If you parse it and turn it back into JSON, verification fails. We insert the raw request body into the verification request as-is.
 - **`provide-evidence` is easy to get wrong.** Problems include multipart encoding, evidence types that aren't allowed for a reason code, file size limits, and disputes in the wrong state. We put all the reason-code-to-evidence-type rules in one typed file, and the submission service rejects anything outside it.
 - **AG Grid's best-known features are Enterprise-only.** Row grouping and master/detail need a paid license, and we stayed on Community. We built expandable full-width rows for the agent trace, our own group-by with group-header rows, quick filter, a pinned totals row ("$ at risk", "due in < 48 h"), CSV export, and the Theming API.
-- **Render's free tier has no persistent disk.** SQLite is rebuilt on every boot, and the poller then pulls the live sandbox disputes back in. This is documented rather than hidden.
-- **Grounding is harder than it sounds.** Asking a model to cite sources isn't enough. It will cite S3 and still slip in a date S3 doesn't contain. Our checker looks for those tokens one by one, and that's what makes the citations trustworthy.
+- **The first AI-generated build didn't fit together.** Parallel builders left 60 cross-file type errors and 11 missing files, including the agent runner and the citation checker. The poller never started and the app's dev mode wouldn't boot. Finishing it meant writing the missing pieces and reconciling every interface until the typecheck and tests were clean.
+- **Grounding is harder than it sounds.** Asking a model to cite sources isn't enough, because it can cite S3 and still slip in a date S3 doesn't contain. Our checker looks for those tokens one by one, and the citations rest on that check.
 
 ## Accomplishments that we're proud of
 
 - **The agent cannot make up a fact and get it submitted.** Every sentence in the letter traces to a stored PayPal or policy record. Anything unsupported is removed in plain view, and the seller approves before anything is sent. In a real dispute, a made-up tracking event would be fraud, so this was the line we refused to cross.
 - **An agent that recommends losing.** Telling a seller "refund this one, here's why in dollars" is more useful than fighting every claim, and it's the branch that uses `accept-claim` and `make-offer`.
-- **A full lifecycle on PayPal's own platform:** real order, real tracking, real dispute, verified webhook, evidence submitted, sandbox resolution.
+- **Built around PayPal's own dispute lifecycle:** order, tracking, dispute, verified webhook, evidence and sandbox resolution all go through PayPal's APIs.
 - **Honest numbers everywhere.** The stopwatch shows only measured times, with two readouts. "Draft ready" runs from webhook receipt to finished draft. "Submitted" runs from webhook receipt to PayPal's 2xx response and is labeled "includes your approval time". The strength score is labeled a rubric, not a prediction. Historical fixture disputes carry a "Fixture history" badge, and any route that would change data at PayPal rejects them with 422.
 - **Working mock modes for safe testing.** Tests and CI run with mocked PayPal and Claude, with a red "MOCK MODE" banner, so nobody mistakes them for live runs.
 
 ## What we learned
 
 - **The deterministic parts are what make the AI trustworthy.** Claude is great at investigating, classifying and writing. Scoring, expected-value math, counting patterns and checking citations should be plain code, because judges and sellers can check plain code.
-- **PayPal's sandbox-only endpoints are underused.** `require-evidence` and `adjudicate` turn a process that normally takes weeks into something you can show in a single video.
-- **Clear evidence rules matter more than clever wording.** A plain letter with the right evidence type for the reason code beats an eloquent one that doesn't fit the claim.
-- **Building in order of risk works.** Getting `provide-evidence` to return 200 before writing any AI code removed the biggest risk on day one.
+- **PayPal's sandbox-only endpoints help a lot.** `require-evidence` and `adjudicate` turn a process that normally takes weeks into something you can show in a single video.
+- **We bet on clear evidence rules over clever wording.** The goal is a plain letter with the right evidence type for the reason code, not an eloquent one that doesn't fit the claim.
+- **AI-written code needs checkers, not trust.** Each parallel builder produced plausible files that didn't agree with each other. A typecheck and tests found what reading wouldn't.
 
-## What's next
+## What's next for DisputeDefender
 
 - **A real carrier API.** The carrier adapter interface is already in place. Plugging in EasyPost or Shippo test mode would replace the labeled fixture provider.
 - **Live credentials and multiple sellers.** That means adding authentication and moving from sandbox to live PayPal credentials, with a path toward an app-marketplace listing.
 - **Better patterns as data grows.** With more real dispute history, prevention actions can go beyond size charts. One example: suggest signature confirmation above a dollar amount the seller chooses.
 - **Fee schedules that match the seller.** The dispute fee is currently a setting the seller enters. Reading it per seller would make the expected-value math exact for each store.
 
+## AI tools used
+
+**Inside the product (Anthropic Messages API):**
+- **Claude Sonnet** runs the agent: it calls read-only PayPal-backed tools, classifies the reason code, explains the deterministic score and expected-value result, and drafts cited sentences. It also tags buyer messages with themes from a closed list.
+- **Claude Opus** does an optional reword-only review of the draft. Its output is discarded if it fails the citation check.
+- **What the AI does not do:** it doesn't compute the strength score, the expected value or the pattern counts, which are plain code. It never calls an endpoint that changes anything at PayPal; those run only from seller-approved routes.
+
+**To build the product (Claude, through the Claude Code CLI):**
+- Almost all of the code was written by AI, under our direction. A multi-agent pipeline generated the first version during the hackathon: 163 of its 174 planned files.
+- The rest was finished in a Claude Code session: the 11 missing files, 60 cross-file type errors reconciled, and startup bugs fixed. The tests, documentation and this description were also written with Claude.
+
 ## Built With
 
-paypal-disputes-api, paypal-webhooks, paypal-orders-v2, paypal-checkout-js-sdk, paypal-add-tracking-api, claude, anthropic-sdk, typescript, node.js, next.js, react, tailwindcss, server-sent-events, ag-grid-community, react-pdf, sqlite, better-sqlite3, zod, render, postman, vitest, playwright, gitleaks
+paypal-disputes-api, paypal-webhooks, paypal-orders-v2, paypal-checkout-js-sdk, paypal-add-tracking-api, claude, claude-code, anthropic-sdk, typescript, node.js, next.js, react, tailwindcss, server-sent-events, ag-grid-community, react-pdf, sqlite, better-sqlite3, zod, postman, vitest, playwright, gitleaks
