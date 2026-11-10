@@ -152,6 +152,16 @@ PAYPAL_MOCK=1 ANTHROPIC_MOCK=1 npm run dev
 
 PayPal calls are answered from `data/fixtures/mock-paypal`, and the agent is a **scripted stand-in**, not Claude: it calls the real tools in a fixed order and fills a template from the stored sources. The UI shows a red **MOCK MODE** banner the whole time. Use it to explore the screens; the real agent needs the credentials below.
 
+### The real agent on mock PayPal data, with a local Claude Code CLI
+
+If you have the [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed and signed in, the real agent (Claude Sonnet, with the Claude Opus review pass) can run against the mock PayPal fixtures with no API key:
+
+```bash
+PAYPAL_MOCK=1 ANTHROPIC_PROVIDER=claude-cli npm run dev
+```
+
+Each agent turn is one `claude -p` call with its built-in tools switched off; the reply comes back as JSON and is rebuilt as a Messages API response, so the runner, the citation checker and the review pass are unchanged. This is for local development only; a hosted deployment uses `ANTHROPIC_API_KEY`. The red **MOCK MODE** banner still shows for PayPal. A gated test runs this path end to end: `LIVE_CLI=1 npx vitest run tests/integration/agent-run.cli.live.test.ts`.
+
 ### Prerequisites
 
 - Node.js **22.20.0** (`nvm use`)
@@ -240,7 +250,7 @@ npm test                                      # unit + integration (Vitest)
 PAYPAL_MOCK=1 ANTHROPIC_MOCK=1 npm run test:e2e   # Playwright demo loop in mock mode
 ```
 
-Unit tests cover the citation checker, the strength rubric, the EV math, the evidence rules, the multipart builder, the webhook verify body, pattern counting and the submission guards.
+Unit tests cover the local CLI provider, the citation checker, the strength rubric, the EV math, the evidence rules, the multipart builder, the webhook verify body, pattern counting and the submission guards.
 
 ### Deploy to Render
 

@@ -68,6 +68,12 @@ const EnvSchema = z.object({
   DEMO_TRIGGER_GLOBAL_PER_HOUR: positiveInt(10),
   PAYPAL_MOCK: flag(false),
   ANTHROPIC_MOCK: flag(false),
+  // api = Messages API with ANTHROPIC_API_KEY (default, and the only option for a
+  // hosted deployment); claude-cli = the local Claude Code CLI, for development.
+  ANTHROPIC_PROVIDER: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.enum(["api", "claude-cli"]).default("api"),
+  ),
   POLL_INTERVAL_MS: z.preprocess(
     (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
     z.coerce.number().int().min(5_000).default(30_000),
@@ -166,7 +172,7 @@ export function requireAnthropicKey(): string {
   const e = getEnv();
   if (!e.ANTHROPIC_API_KEY) {
     throw new Error(
-      "ANTHROPIC_API_KEY must be set (see .env.example), or set ANTHROPIC_MOCK=1 for tests.",
+      "ANTHROPIC_API_KEY must be set (see .env.example), or set ANTHROPIC_PROVIDER=claude-cli to use a signed-in local Claude Code CLI, or ANTHROPIC_MOCK=1 for tests.",
     );
   }
   return e.ANTHROPIC_API_KEY;

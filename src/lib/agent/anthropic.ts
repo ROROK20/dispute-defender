@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getEnv, requireAnthropicKey } from '../env';
+import { createClaudeCliModel } from './claude-cli';
 
 /**
  * The one place the app talks to the Anthropic Messages API.
@@ -64,7 +65,13 @@ function looksLikeRejectedExtra(err: unknown): boolean {
   return ['output_config', 'effort', 'fallbacks', 'anthropic-beta', 'beta'].some((k) => text.includes(k));
 }
 
+let cliModel: ModelFn | null = null;
+
 export const createMessage: ModelFn = async (req) => {
+  if (getEnv().ANTHROPIC_PROVIDER === 'claude-cli') {
+    cliModel ??= createClaudeCliModel(modelFor);
+    return cliModel(req);
+  }
   const base: Anthropic.MessageCreateParamsNonStreaming = {
     model: modelFor(req.role),
     max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS[req.role],
