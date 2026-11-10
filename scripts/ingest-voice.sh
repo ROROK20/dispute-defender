@@ -16,7 +16,7 @@ SRC="${1:-$HOME/Downloads}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/demo/v2/voice"
 mkdir -p "$OUT"
-CODES=(A1 A2 C D E F G H I K J1 Z)
+CODES=(A1 O1 O2 O3 A2 C D E F REJ G W H I K R J1 Z)
 missing=()
 
 for code in "${CODES[@]}"; do

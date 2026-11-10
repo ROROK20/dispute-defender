@@ -1,6 +1,6 @@
 # Devpost paste text: DisputeDefender
 
-_Paste each section into the matching Devpost field. Nothing here has been submitted._
+_Paste each section into the matching Devpost field. Nothing here has been submitted. If a live PayPal sandbox run is completed before submission, `SUBMIT_NOW.md` lists the exact sentences to swap._
 
 ## Project name
 
@@ -20,23 +20,25 @@ That sentence is the whole pitch. Picture a solo seller running a small handmade
 2. **They send the wrong kind of evidence**, like a screenshot where PayPal wanted a carrier record.
 3. **They write an angry paragraph** that doesn't address the reason code the buyer filed under.
 
-None of these is about who was right. They happen because the seller has no time to learn what each reason code needs, and enterprise chargeback tools are priced for much bigger merchants. PayPal already has a full Disputes API for this job. We wanted to see what happens when an agent works through that API for the seller, honestly, within minutes of the claim.
+None of these is about who was right. They happen because the seller has no time to learn what each reason code needs, and enterprise chargeback tools are priced for much bigger merchants. PayPal already has a full Disputes API for this job. We wanted to see what happens when an agent works through that API for the seller, within minutes of the claim.
 
 ## What it does
 
-**DisputeDefender** is a dispute agent for small PayPal sellers. It's built directly on PayPal's Disputes API, not on a document template.
+**DisputeDefender** is a dispute agent for small PayPal sellers. It's written against PayPal's Disputes API, not a document template. Its promise is three words: **cited, costed, approved by you.** And when the case is weak, it concedes.
 
-**1. It wakes up when the dispute does.** A `CUSTOMER.DISPUTE.CREATED` webhook arrives, and we check its signature against PayPal's `verify-webhook-signature` endpoint. A stopwatch starts on screen at that moment. If webhook delivery is slow, a poller that runs every 30 seconds catches any new dispute in `WAITING_FOR_SELLER_RESPONSE`.
+**What is real and what is mocked, up front.** The agent is real Claude. In the demo video, one real run took about a minute and 9 of 9 letter sentences passed the citation check. PayPal is different: in the demo and the video, every PayPal call is answered by a **mock adapter** (`PAYPAL_MOCK=1`) serving sandbox-shaped fixtures. The code is written against PayPal's APIs, and the app shows a red MOCK MODE banner the whole time. We have not run a live PayPal sandbox flow end to end, so nothing below claims one.
 
-**2. It investigates using real PayPal data.** A Claude tool-use agent pulls:
+**1. It wakes up when the dispute does.** The app receives `CUSTOMER.DISPUTE.CREATED` webhooks and verifies each one by posting the original raw body to PayPal's `verify-webhook-signature` endpoint. A stopwatch starts on screen at that moment. If a webhook is slow, a poller that runs every 30 seconds catches any new dispute in `WAITING_FOR_SELLER_RESPONSE`.
+
+**2. It investigates.** A Claude tool-use agent calls read-only tools that fetch:
 - the dispute
 - the Orders v2 capture and order
-- the PayPal tracker for the shipment
+- the shipment tracker
 - the buyer's message thread
 - the store's policies
 - the SKU record
 
-Every step streams live into a trace panel. Every tool result is stored as a numbered source (`S1…Sn`).
+Every step streams live into a trace panel. Every tool result is stored as a numbered source (`S1…Sn`). In the demo these tools read PayPal-shaped fixtures; against real credentials they call PayPal.
 
 **3. It scores the evidence with a rubric you can read.** The evidence strength score (0–100) comes from a fixed rubric per reason code, written in code rather than by a model. For "item not received", for example:
 - tracking attached in PayPal: 25
@@ -47,39 +49,42 @@ Every step streams live into a trace panel. Every tool result is stored as a num
 
 Hover over the score to see which items are present and which sources prove them. We don't call this a trained win probability, because it isn't one.
 
-**4. It tells you when *not* to fight.** Plain arithmetic compares three options: fight, accept the claim, or make a partial offer. For example, the cost of fighting is `(1 − s)·(A + F) + T`, where `s` is the strength score, `A` the disputed amount, `F` the dispute fee and `T` the value of the seller's time. The formula is shown with the real values filled in. If the evidence is weak, the agent recommends `accept-claim` or `make-offer` and shows the dollar math. Claude can explain the recommendation but cannot override it.
+**4. It tells you when *not* to fight.** Plain arithmetic compares three options: fight, accept the claim, or make a partial offer. For example, the expected cost of fighting is `(1 − s)·(A + F) + T`, where `s` is the strength score, `A` the disputed amount, `F` the dispute fee and `T` the value of the seller's time. The formula is shown with the real values filled in. If the evidence is weak, the agent recommends `accept-claim` or `make-offer` and shows the dollar math. Claude can explain the recommendation but cannot override it.
 
-**5. It cannot submit a claim it can't back up.** The response letter is a list of sentences, and each sentence must cite at least one stored source. A deterministic checker also requires every number, date, tracking number and quoted string in a sentence to appear in the text of a source it cites. A sentence that fails goes back to the model with the reason, for up to 2 repair rounds. If it still fails, it's removed and listed in the UI as "removed, unsupported".
+**5. Every sentence is cited, and a checker enforces it.** The response letter is a list of sentences, and each sentence must cite at least one stored source. A deterministic checker also requires every number, date, tracking-style identifier and quoted string in a sentence to appear in the text of a source that sentence cites. It checks those tokens. It does not judge whether a sentence's meaning is faithful, so the seller still reads the draft. A sentence that fails goes back to the model with the reason, for up to 2 repair rounds. If it still fails, it's removed and listed in the UI as "removed, unsupported". If the seller edits a sentence, the edit goes through the same check.
 
-**6. It builds a professional evidence packet.** The PDF contains a cover letter, timeline, tracking proof, a message excerpt, the policy clause, and one footnote per citation. Our target size is under 500 KB.
+**6. It builds an evidence packet.** The PDF contains a cover letter, timeline, tracking proof, a message excerpt, the policy clause, and one footnote per citation. The PDF preview shows the same bytes that get submitted.
 
-**7. Nothing goes to PayPal without one click from the seller.** The seller reviews the draft, can click any citation chip to see its source, and taps **Approve & Submit**. Before calling PayPal, the app fetches the dispute again and checks four things:
+**7. Nothing goes to PayPal without one click from the seller.** The seller reviews the draft, can click any citation chip to see its source, and taps **Approve & Submit**, from a laptop or from a phone-sized screen. Before calling PayPal, the app fetches the dispute again and checks four things:
 - the status is still `WAITING_FOR_SELLER_RESPONSE`
 - the deadline hasn't passed
 - every evidence type is allowed for that reason code
 - the file is under 10 MB
 
-Then it sends a multipart `provide-evidence` request and records PayPal's `debug_id`. Nothing is ever submitted automatically.
+Then it sends a multipart `provide-evidence` request and stores the response status and `debug_id`. In the demo that request goes to the mock adapter, and the id is a mock one. Nothing is ever submitted automatically.
 
-**8. It helps prevent the next dispute.** The Patterns page groups disputes by SKU and reason code. Claude tags each buyer message with a theme from a closed list (such as `sizing` or `color_mismatch`). Our code, not the model, counts the tags. In our labeled fixture history, the result reads: *"4 of 6 SNAD claims on JT-114 mention sizing. Update the size chart for JT-114."* ("SNAD" means significantly not as described.) Each pattern stores the buyer's exact words, and we check every quote against the original message. A bot that only answers disputes becomes a system that helps prevent them.
+**8. It helps prevent the next dispute.** The Patterns page groups disputes by SKU and reason code. Claude tags each buyer message with a theme from a closed list (such as `sizing` or `color_mismatch`). Our code, not the model, counts the tags. On the bundled, labeled fixture history, the top pattern is that most SNAD claims on JT-114 mention sizing, with the prevention action *"Update the size chart for JT-114."* The headline shows the exact count, and it moves as disputes are added, including the one the agent just answered. ("SNAD" means significantly not as described.) Each pattern stores the buyer's exact words, and we check every quote against the original message.
 
 The inbox is an AG Grid table of every dispute, with deadline countdowns, status pills, strength bars and recommendations. Each row expands into that dispute's full agent trace.
 
 ## How we built it
 
-**PayPal is the backbone, not an add-on.** We use the sandbox across several parts of the platform:
+**PayPal is the backbone, not an add-on.** The typed client in `src/lib/paypal` is written against these parts of the platform:
 
-- **Disputes API v1:** list and show, `provide-evidence` (multipart form with JSON and a PDF), `accept-claim`, `make-offer`, `send-message`, plus the sandbox-only `require-evidence` and `adjudicate` endpoints. These make it possible to show the whole lifecycle in one video: open, evidence, resolution.
-- **Webhooks** for dispute created, updated and resolved, with real signature verification.
-- **Orders v2 + Checkout JS SDK** (`@paypal/react-paypal-js`). A small fictional storefront, "Juniper Thread Co.", creates real captured sandbox orders, so every dispute traces back to a real PayPal transaction ID.
-- **Add Tracking API** (`/v1/shipping/trackers-batch`). Tracking gets attached when an order is captured, so "item not received" evidence comes from PayPal's own records.
+- **Disputes API v1:** get and list, `provide-evidence` (multipart form with JSON and a PDF), `accept-claim`, `make-offer`, `send-message`, plus the sandbox-only `require-evidence` and `adjudicate` endpoints, which exist so a whole dispute lifecycle can be shown in one session.
+- **Webhooks:** dispute created, updated and resolved events, checked through `verify-webhook-signature` with the raw request body sent as-is.
+- **Orders v2 + captures, with the Checkout JS SDK** (`@paypal/react-paypal-js`). A small fictional storefront, "Juniper Thread Co.", has create-and-capture routes.
+- **Add Tracking API** (`/v1/shipping/trackers-batch`). Tracking is attached when an order is captured, so "item not received" evidence can come from PayPal's own tracker record.
 
-Every PayPal call is logged with its method, path, status, duration and `paypal-debug-id`. The Activity page lists them all.
+Every PayPal call is logged with its method, path, status, duration and the `paypal-debug-id` from the response. The Activity page lists them. In the demo these are mock-adapter calls with mock ids.
+
+The Postman collection in `postman/` replays each of these calls.
 
 **The agent** is a tool-use loop written directly against the Anthropic SDK, with no agent framework.
 - **Claude Sonnet** runs the loop and tags pattern themes.
-- **Claude Opus** does one final review of the wording. It may only reword sentences, keeping the same sentence IDs and citations, and its output goes back through the citation checker. If any sentence then fails, we discard Opus's version and keep the Sonnet draft.
+- **Claude Opus** does one final review of the wording. It may only reword sentences: same sentence IDs, same order, and the citations are carried over from the draft. Its output goes back through the citation checker. If any sentence then fails, we discard Opus's version and keep the Sonnet draft.
 - The loop ends with a required `submit_analysis` tool call, validated with zod. Limits: at most 12 model turns and a 90-second wall-clock budget. Every step is written to the database before it is streamed to the browser.
+- Models are reached through the Anthropic API (`ANTHROPIC_API_KEY`) or, for local use, through a signed-in Claude Code CLI (`ANTHROPIC_PROVIDER=claude-cli`). The demo run used the CLI path.
 
 **The stack:**
 - **App:** Next.js (App Router) with Tailwind, on Node.js 22.
@@ -88,52 +93,85 @@ Every PayPal call is logged with its method, path, status, duration and `paypal-
 - **PDF:** `@react-pdf/renderer` builds the evidence packet.
 - **Grid:** AG Grid Community.
 - **Running it:** the repo has full setup steps, plus a mock mode that needs no credentials. A `render.yaml` blueprint is included for anyone who wants a hosted copy.
-- **Replay:** a Postman collection lets anyone repeat each PayPal call the agent makes.
 
 **How the code got written.** Almost all of this code was written by AI, under our direction. A multi-agent pipeline drove Claude through the Claude Code CLI to generate the first version, then the rest was finished in a Claude Code session. See "AI tools used" below for the details.
 
 ## Challenges we ran into
 
-- **You can't create a dispute through the API.** Every real dispute has to be opened by a sandbox buyer in the sandbox Resolution Center, against an order paid with the PayPal wallet. We wrote a staging runbook (`docs/sandbox-staging.md`), and the app draws from a pool of staged real disputes. The "Trigger demo dispute" button takes the oldest real one from that pool. It is labeled "Demo trigger (not a PayPal webhook)". If the pool is empty, it returns 409 with restocking instructions and never fakes a dispute.
-- **The webhook simulator isn't enough for the full flow.** Its events carry sample data rather than a real dispute, so we designed around them. The 30-second poller and the demo trigger are our honest fallbacks.
-- **Signature verification depends on the exact bytes.** PayPal expects `webhook_event` to be the original raw JSON. If you parse it and turn it back into JSON, verification fails. We insert the raw request body into the verification request as-is.
-- **`provide-evidence` is easy to get wrong.** Problems include multipart encoding, evidence types that aren't allowed for a reason code, file size limits, and disputes in the wrong state. We put all the reason-code-to-evidence-type rules in one typed file, and the submission service rejects anything outside it.
+- **Disputes can't be created through the API.** As we read PayPal's documentation, a buyer has to open a dispute in the Resolution Center. We wrote a staging runbook for that (`docs/sandbox-staging.md`), but we have not executed it, which is why the demo runs on fixtures. The "Trigger demo dispute" button takes the oldest staged dispute with no agent run yet, is labeled "Demo trigger (not a PayPal webhook)", and returns 409 with restocking instructions if none is left. It never makes one up.
+- **Slow or missing webhooks must not stall a dispute.** The 30-second poller and the demo trigger are the fallbacks.
+- **Signature verification depends on the exact bytes.** `verify-webhook-signature` expects `webhook_event` to be the original raw JSON. If you parse it and turn it back into JSON, verification can fail. We insert the raw request body into the verification request as-is, and a unit test covers the body builder.
+- **`provide-evidence` is easy to get wrong.** Problems include multipart encoding, evidence types that aren't allowed for a reason code, file size limits, and disputes in the wrong state. We put all the reason-code-to-evidence-type rules in one typed file, and the submission service rejects anything outside it. Those rules follow PayPal's documentation and still need confirming with a live sandbox call.
 - **AG Grid's best-known features are Enterprise-only.** Row grouping and master/detail need a paid license, and we stayed on Community. We built expandable full-width rows for the agent trace, our own group-by with group-header rows, quick filter, a pinned totals row ("$ at risk", "due in < 48 h"), CSV export, and the Theming API.
 - **The first AI-generated build didn't fit together.** Parallel builders left 60 cross-file type errors and 11 missing files, including the agent runner and the citation checker. The poller never started and the app's dev mode wouldn't boot. Finishing it meant writing the missing pieces and reconciling every interface until the typecheck and tests were clean.
 - **Grounding is harder than it sounds.** Asking a model to cite sources isn't enough, because it can cite S3 and still slip in a date S3 doesn't contain. Our checker looks for those tokens one by one, and the citations rest on that check.
+- **Mock dates go stale.** Fixture dates are shifted forward to the day the database is seeded (`src/lib/fixture-clock.ts`), so deadlines look current and a date reads the same in every source the agent cites.
 
 ## Accomplishments that we're proud of
 
-- **The agent cannot make up a fact and get it submitted.** Every sentence in the letter traces to a stored PayPal or policy record. Anything unsupported is removed in plain view, and the seller approves before anything is sent. In a real dispute, a made-up tracking event would be fraud, so this was the line we refused to cross.
+- **Every sentence in the letter is cited, and a deterministic checker enforces it.** It verifies that each number, date, tracking-style identifier and quote traces to a stored record the sentence cites. Anything it can't ground is removed in plain view, and the seller approves before anything is sent. In a real dispute, a made-up tracking event would be fraud, so this was the line we refused to cross. We are explicit about its limit: it checks tokens, not meaning.
 - **An agent that recommends losing.** Telling a seller "refund this one, here's why in dollars" is more useful than fighting every claim, and it's the branch that uses `accept-claim` and `make-offer`.
-- **Built around PayPal's own dispute lifecycle:** order, tracking, dispute, verified webhook, evidence and sandbox resolution all go through PayPal's APIs.
-- **Honest numbers everywhere.** The stopwatch shows only measured times, with two readouts. "Draft ready" runs from webhook receipt to finished draft. "Submitted" runs from webhook receipt to PayPal's 2xx response and is labeled "includes your approval time". The strength score is labeled a rubric, not a prediction. Historical fixture disputes carry a "Fixture history" badge, and any route that would change data at PayPal rejects them with 422.
-- **Working mock modes for safe testing.** Tests and CI run with mocked PayPal and Claude, with a red "MOCK MODE" banner, so nobody mistakes them for live runs.
+- **Real Claude, end to end.** The demo shows one real agent run: about a minute, tool calls streamed live, 9 of 9 citations grounded.
+- **Written against PayPal's own dispute lifecycle:** order, tracking, dispute, webhook verification, evidence and resolution, each with a typed client function and unit tests, and each answerable by the mock adapter.
+- **Honest numbers everywhere.** The stopwatch shows only measured times, with two readouts. "Draft ready" runs from trigger to finished draft. "Submitted" runs from trigger to the 2xx response and is labeled "includes your approval time". The strength score is labeled a rubric, not a prediction. Historical fixture disputes carry a "Fixture history" badge, and any route that would change data at PayPal rejects them with 422.
+- **Mock modes, labeled as such.** Mocked PayPal and a scripted Claude stand-in let anyone run the app with no credentials. A red "MOCK MODE" banner shows the whole time, so nobody mistakes it for a live run.
 
 ## What we learned
 
 - **The deterministic parts are what make the AI trustworthy.** Claude is great at investigating, classifying and writing. Scoring, expected-value math, counting patterns and checking citations should be plain code, because judges and sellers can check plain code.
-- **PayPal's sandbox-only endpoints help a lot.** `require-evidence` and `adjudicate` turn a process that normally takes weeks into something you can show in a single video.
+- **A mock adapter is only honest if it is loud about itself.** Ours shows a banner, mock ids and a separate demo-trigger label, and the writing here says which parts ran on it.
 - **We bet on clear evidence rules over clever wording.** The goal is a plain letter with the right evidence type for the reason code, not an eloquent one that doesn't fit the claim.
 - **AI-written code needs checkers, not trust.** Each parallel builder produced plausible files that didn't agree with each other. A typecheck and tests found what reading wouldn't.
 
 ## What's next for DisputeDefender
 
+- **A live PayPal sandbox run.** Create the sandbox accounts, stage disputes with the runbook, run `npm run smoke:evidence`, and replace the fixture answers with real ones. That is the first thing we'd do.
 - **A real carrier API.** The carrier adapter interface is already in place. Plugging in EasyPost or Shippo test mode would replace the labeled fixture provider.
-- **Live credentials and multiple sellers.** That means adding authentication and moving from sandbox to live PayPal credentials, with a path toward an app-marketplace listing.
+- **Multiple sellers.** That means adding authentication and, later, live PayPal credentials, with a path toward an app-marketplace listing.
 - **Better patterns as data grows.** With more real dispute history, prevention actions can go beyond size charts. One example: suggest signature confirmation above a dollar amount the seller chooses.
 - **Fee schedules that match the seller.** The dispute fee is currently a setting the seller enters. Reading it per seller would make the expected-value math exact for each store.
 
+## Testing instructions
+
+You need Node.js 22.20.0 or newer. No PayPal account, API key or `.env` file is needed for mock mode.
+
+```bash
+git clone https://github.com/ROROK20/dispute-defender.git && cd dispute-defender
+npm ci
+PAYPAL_MOCK=1 ANTHROPIC_MOCK=1 npm run setup
+PAYPAL_MOCK=1 ANTHROPIC_MOCK=1 npm run dev     # http://localhost:3000
+```
+
+1. Open the inbox and press **Trigger demo dispute**. A red **MOCK MODE** banner is expected.
+2. Watch the trace stream, then open the cited draft. Click any citation chip to see the stored source.
+3. Open the strength score and the fight-or-concede panel to see the arithmetic.
+4. Press **Approve & Submit**. In mock mode this goes to the mock adapter, not to PayPal.
+5. Open `/patterns` and recompute to see grouped root causes with buyer quotes, and `/activity` to see the call log.
+
+In this mode the agent is a **scripted stand-in**, not Claude. To run the real agent on the same mock PayPal data, with a Claude Code CLI installed and signed in (no API key):
+
+```bash
+PAYPAL_MOCK=1 ANTHROPIC_PROVIDER=claude-cli npm run dev
+```
+
+To run the checks: `npm run typecheck`, `npm run lint`, `npm test`, and `PAYPAL_MOCK=1 ANTHROPIC_MOCK=1 npm run test:e2e` (Playwright).
+
+**With real credentials,** you would set `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` and `PAYPAL_WEBHOOK_ID` for a PayPal sandbox app, drop `PAYPAL_MOCK`, and either set `ANTHROPIC_API_KEY` or keep the CLI provider. The steps are in `docs/sandbox-staging.md`. That path has not been run end to end by us.
+
 ## AI tools used
 
-**Inside the product (Anthropic Messages API):**
-- **Claude Sonnet** runs the agent: it calls read-only PayPal-backed tools, classifies the reason code, explains the deterministic score and expected-value result, and drafts cited sentences. It also tags buyer messages with themes from a closed list.
+**Inside the product:**
+- **Claude Sonnet** (Anthropic Messages API, or a local Claude Code CLI) runs the agent: it calls read-only tools, classifies the reason code, explains the deterministic score and expected-value result, and drafts cited sentences. It also tags buyer messages with themes from a closed list.
 - **Claude Opus** does an optional reword-only review of the draft. Its output is discarded if it fails the citation check.
 - **What the AI does not do:** it doesn't compute the strength score, the expected value or the pattern counts, which are plain code. It never calls an endpoint that changes anything at PayPal; those run only from seller-approved routes.
 
-**To build the product (Claude, through the Claude Code CLI):**
+**To build the product:** Claude, through the Claude Code CLI.
 - Almost all of the code was written by AI, under our direction. A multi-agent pipeline generated the first version during the hackathon: 163 of its 174 planned files.
 - The rest was finished in a Claude Code session: the 11 missing files, 60 cross-file type errors reconciled, and startup bugs fixed. The tests, documentation and this description were also written with Claude.
+
+**To make the demo video:**
+- **Higgsfield** generated the AI b-roll stills and clips (mood footage only; every product screen in the video is a real screen recording). Music, if used, is ElevenLabs Music generated through Higgsfield.
+- **The founder's own voice** narrates the video. No synthetic voice is used for the narration.
 
 ## Built With
 

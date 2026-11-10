@@ -1,20 +1,28 @@
-# Voice script: Dispute Defender demo
+# Voice script v3: Dispute Defender demo
 
-Record **one Voice Memo per line** and name each memo with its code (A1, A2, C and so on). Read slowly and calmly; the video stretches to fit your read.
+Record **one Voice Memo per line** and name each memo with its code. Read calmly, as if you're explaining it to a friend. The video stretches to fit your read.
 
-If you stumble, just re-read the whole line in the same memo. The clean take gets used.
+If you stumble, re-read the whole line in the same memo.
+
+Lines marked *(maybe)* are used only if that moment makes it into the recording. Record them anyway.
 
 | Code | Read this |
 |---|---|
-| A1 | It's eleven at night. A buyer just opened a dispute, and the clock is already running. |
+| A1 | Eleven at night. A buyer just opened a PayPal dispute. |
+| O1 | Dispute Defender is an AI agent that drafts the answer. |
+| O2 | Moments later, a draft is ready, and every sentence cites its source. |
+| O3 | Here's how it works, and how it knows when to give up. |
 | A2 | Small sellers lose disputes they could have won: a missed deadline, the wrong evidence, or a reply that ignores the reason code. |
-| C | This is Dispute Defender. Every open dispute, its deadline, and how strong the evidence is. In this recording, PayPal's responses are sandbox-shaped fixtures. The agent is real Claude, running live. |
-| D | A dispute comes in, and the agent goes to work. Claude pulls the dispute, the buyer's messages, the order and its capture, the tracking, and the store's own policies. Every result becomes a numbered source. |
-| E | It scores the evidence against a rubric for this exact reason code, then does the math: is this worth fighting? Here, it is. |
-| F | Every sentence cites its source. Click one, and you see the record it came from. A deterministic checker rejects any sentence whose numbers, dates or quotes aren't in those sources, so the agent can't invent facts. |
-| G | Nothing is sent until the seller approves. One click submits the evidence packet. Here, it goes to a mock PayPal adapter. |
+| C | Every open dispute, its deadline, and how strong the evidence is. PayPal's responses here are sandbox-shaped fixtures. The agent is real Claude. |
+| D | When a dispute comes in, Claude pulls the dispute, the buyer's messages, the order and its capture, the tracking, and the store's policies. Every result becomes a numbered source. |
+| E | It scores the evidence for this exact reason code, then does the math. Here, fighting is the cheaper bet, so it fights. |
+| F | Every sentence cites its source. Click one, and you see the record behind it. Every number, date and quote is checked against those records before anything can be sent. |
+| REJ | *(maybe)* Change a date by hand, and the checker blocks the submission. |
+| G | Nothing is sent until the seller approves. One click submits the evidence. Here, to a mock PayPal adapter. |
+| W | *(maybe)* When the evidence is weak, it says so, and shows the dollar math for refunding instead. |
 | H | And it helps prevent the next one. Patterns groups past disputes by product and reason, in the buyers' own words, so you can fix the cause, like an outdated size chart. |
 | I | Review and approve from your phone. |
-| K | Under the hood, Claude runs the agent with tools, a deterministic checker guards every citation, and a Claude Opus pass is only allowed to reword. On the PayPal side, it's wired to the Disputes, Orders and Webhooks APIs. |
-| J1 | Dispute Defender won't invent facts, it shows you the math, and it helps stop the next dispute. |
-| Z | The code is at the link below. |
+| K | Under the hood: a Claude tool-use agent, a deterministic citation checker, and PayPal's Disputes, Orders and Webhooks APIs. |
+| R | Every sentence cited. Every option costed. Nothing sent until the seller says so. |
+| J1 | So the seller gets their night back. |
+| Z | Dispute Defender. The code is linked below. |

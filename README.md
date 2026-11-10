@@ -12,19 +12,46 @@ DisputeDefender is a dispute agent for small PayPal sellers. A `CUSTOMER.DISPUTE
 
 Enterprise chargeback tools are priced for larger merchants. DisputeDefender is built for the seller doing this alone.
 
-> 🧪 **Sandbox demo data.** Everything runs against the PayPal sandbox. The store ("Juniper Thread Co."), its products and its buyers are fictional.
+> 🧪 **What is real and what is mocked.** The demo and the demo video run with `PAYPAL_MOCK=1`: PayPal calls are answered by a **mock adapter** serving sandbox-shaped fixtures, and the UI shows a red MOCK MODE banner. The PayPal client is written against PayPal's APIs and is tested against fixtures, but **we have not run a live PayPal sandbox flow end to end**, so nothing here claims one. The agent is real Claude (through the Anthropic API or a local Claude Code CLI). The store ("Juniper Thread Co."), its products and its buyers are fictional.
 
 ---
 
 ## Demo
 
 - **Video (under 3 min):** `<YOUTUBE_URL>`
-- **Try it yourself:** follow [Setup](#setup). Mock mode needs no credentials; the full loop needs a PayPal sandbox app and an Anthropic key.
+- **Try it yourself:** follow [Testing instructions](#testing-instructions-for-judges) or [Setup](#setup). Mock mode needs no credentials; a live PayPal run (not yet done by us) would need a PayPal sandbox app, and the real agent needs an Anthropic key or a signed-in Claude Code CLI.
 
 The stopwatch in the UI shows **measured** elapsed times only:
 
 - **Draft ready**: from when the trigger was received until the cited draft is ready.
-- **Submitted**: from when the trigger was received until PayPal returns 2xx on the approved action. This time includes the seller's approval time, and the label says so.
+- **Submitted**: from when the trigger was received until PayPal (in the demo, the mock adapter) returns 2xx on the approved action. This time includes the seller's approval time, and the label says so.
+
+In the demo video, one real agent run took about a minute, and 9 of 9 letter sentences passed the citation check.
+
+---
+
+## Testing instructions (for judges)
+
+Node.js 22.20.0 or newer. No PayPal account, API key or `.env` file is needed for mock mode.
+
+```bash
+git clone https://github.com/ROROK20/dispute-defender.git && cd dispute-defender
+npm ci
+PAYPAL_MOCK=1 ANTHROPIC_MOCK=1 npm run setup
+PAYPAL_MOCK=1 ANTHROPIC_MOCK=1 npm run dev     # http://localhost:3000
+```
+
+1. Press **Trigger demo dispute** in the inbox (red MOCK MODE banner expected).
+2. Watch the trace, open the cited draft, and click a citation chip to see its stored source.
+3. Open the strength score and the fight-or-concede panel to see the arithmetic.
+4. **Approve & Submit** sends to the mock adapter, not to PayPal.
+5. `/patterns` shows grouped root causes with buyer quotes; `/activity` shows the call log.
+
+Here the agent is a scripted stand-in, not Claude. For the real agent on the same mock PayPal data, with a signed-in Claude Code CLI and no API key: `PAYPAL_MOCK=1 ANTHROPIC_PROVIDER=claude-cli npm run dev`.
+
+Checks: `npm run typecheck`, `npm run lint`, `npm test`, `PAYPAL_MOCK=1 ANTHROPIC_MOCK=1 npm run test:e2e`.
+
+**What changes with real sandbox credentials:** set `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` and `PAYPAL_WEBHOOK_ID`, drop `PAYPAL_MOCK`, and follow [`docs/sandbox-staging.md`](docs/sandbox-staging.md). Disputes then come from PayPal, the tools read PayPal's responses, and the Activity page shows PayPal's own `debug_id`s instead of mock ones. We have not run that path end to end. Fixture dates are shifted to the day the database is seeded (`src/lib/fixture-clock.ts`), in mock mode only.
 
 ---
 
@@ -62,7 +89,7 @@ The stopwatch in the UI shows **measured** elapsed times only:
 
 ### Prevention: Patterns
 - **Root-cause mining.** Disputes are grouped by `(sku, reason)` in code. Claude tags each buyer message with themes from a closed list: `sizing`, `color_mismatch`, `fabric_quality`, `late_delivery`, `wrong_item`, `damaged`, `not_recognized`. **Code does the counting**, and every quote is checked as a verbatim substring of its message.
-- **Prevention actions.** For example: *"4 of 6 SNAD claims on JT-114 mention sizing. Update the size chart for JT-114."* This example comes from the bundled fixture history, which carries a "Fixture history" badge.
+- **Prevention actions.** For example, on the bundled fixture history most SNAD claims on JT-114 mention sizing, and the action reads *"Update the size chart for JT-114."* The headline shows the exact count, which moves as disputes (including the one just answered) are added. The fixture history carries a "Fixture history" badge.
 
 ### Seller inbox (AG Grid Community)
 - Custom cell renderers: deadline countdown, status pill, strength bar, amount, reason and recommendation.
@@ -73,9 +100,9 @@ The stopwatch in the UI shows **measured** elapsed times only:
 
 ### Product polish and observability
 - Designed empty, loading, error and resolved states, plus a mobile-readable approval flow.
-- **Activity page.** Every PayPal call is listed with method, path, status, duration and `paypal-debug-id`.
+- **Activity page.** Every PayPal call is listed with method, path, status, duration and the `paypal-debug-id` from the response (mock ids in mock mode).
 - **Sandbox controls.** These wrap the sandbox-only `require-evidence` and `adjudicate` endpoints so a dispute can be resolved on camera. They are disabled outside the sandbox.
-- **Honest demo trigger.** It takes a **real staged sandbox dispute** from a pool and labels the event *"Demo trigger (not a PayPal webhook)"*. If the pool is empty it returns `409` with restocking instructions. It never fakes a dispute. It is rate-limited per IP and globally.
+- **Honest demo trigger.** It takes the oldest staged dispute waiting for the seller (in mock mode, from the fixtures; with live credentials, a sandbox dispute) and labels the event *"Demo trigger (not a PayPal webhook)"*. If the pool is empty it returns `409` with restocking instructions. It never fakes a dispute. It is rate-limited per IP and globally.
 
 ---
 
@@ -83,7 +110,7 @@ The stopwatch in the UI shows **measured** elapsed times only:
 
 ```mermaid
 flowchart LR
-  subgraph PayPal Sandbox
+  subgraph PayPal APIs (mock adapter in the demo)
     PPD[Disputes API v1]
     PPO[Orders v2 / Payments v2]
     PPT[Add Tracking]
@@ -94,7 +121,7 @@ flowchart LR
   Store -->|trackers-batch| PPT
   PPW -->|CUSTOMER.DISPUTE.*| WH[Webhook receiver<br/>verify-webhook-signature]
   Poll[Poller fallback 30s] -->|list disputes| PPD
-  Demo[Demo trigger<br/>real staged pool] --> Jobs
+  Demo[Demo trigger<br/>staged pool] --> Jobs
   WH --> Jobs[Job queue]
   Poll --> Jobs
 
@@ -224,13 +251,13 @@ npm run webhook:register
 
 This registers `CUSTOMER.DISPUTE.CREATED`, `UPDATED` and `RESOLVED` to `${PUBLIC_BASE_URL}/api/webhooks/paypal`.
 
-> **Note:** The PayPal dashboard **webhook simulator** sends fake resource IDs. These fail signature verification and return 404 on `GET dispute`, so they cannot drive the full flow. Use real sandbox disputes. The poller and demo trigger cover slow delivery.
+> **Note:** The PayPal dashboard **webhook simulator** is documented to send sample resource IDs, which would not verify or resolve through `GET dispute`, so it cannot drive the full flow. Use real sandbox disputes. The poller and demo trigger cover slow delivery. (Not yet exercised live by us.)
 
-### 5. Create real orders and stage disputes
+### 5. Create sandbox orders and stage disputes (not yet run by us)
 
-The PayPal API cannot create disputes; a buyer has to open them. The full runbook is in [`docs/sandbox-staging.md`](docs/sandbox-staging.md). In short:
+As we read PayPal's documentation, the API cannot create disputes; a buyer has to open them. The full runbook is in [`docs/sandbox-staging.md`](docs/sandbox-staging.md). In short:
 
-1. Open `/store` and buy items with the **sandbox buyer's PayPal wallet**. Each capture is a real Orders v2 transaction, and the app attaches tracking through `trackers-batch`.
+1. Open `/store` and buy items with the **sandbox buyer's PayPal wallet**. Each capture goes through Orders v2, and the app attaches tracking through `trackers-batch`.
 2. Optionally run `npm run seed -- --tracking` to add tracking to any captured orders that don't have it.
 3. Log in to `https://www.sandbox.paypal.com/` as the buyer and open disputes in the **Resolution Center**, one per reason code. Escalate to a claim where needed.
 4. In the dispute view, use **Sandbox controls → Require evidence (SELLER_EVIDENCE)** to move the dispute to `WAITING_FOR_SELLER_RESPONSE`.
@@ -277,13 +304,13 @@ Import `postman/DisputeDefender.postman_collection.json` and `postman/DisputeDef
 3. **Watch the agent (`/disputes/:id`).** The live trace streams each step: fetch the dispute, then the capture and order, then tracking, messages, policy and SKU. Next it classifies the reason, scores the evidence and computes expected value. Last it drafts the response and runs the citation check. The stopwatch shows *draft ready* and *submitted* times as measured.
 4. **Review the draft.** Each sentence carries citation chips, and a click opens the source drawer with the exact tool result. Any sentence that could not be grounded is listed under **removed, unsupported**. Hover over the strength score to see its breakdown, and preview the PDF.
 5. **Decide.**
-   - **Approve & Submit.** Runs the submission guards, then sends multipart `provide-evidence`. The result panel shows the HTTP status and `debug_id`.
+   - **Approve & Submit.** Runs the submission guards, then sends multipart `provide-evidence` (to the mock adapter in mock mode). The result panel shows the HTTP status and `debug_id`.
    - **Accept & refund** or **Make offer.** Use these when the EV math says conceding costs less. The formula is shown with your numbers filled in.
    - Optionally send the buyer a courteous message through `send-message`.
 6. **Resolve (sandbox).** Use **Sandbox controls → Adjudicate** to simulate the outcome and see the resolved state.
 7. **Prevent (`/patterns`).** Recompute patterns to see grouped root causes with verbatim buyer quotes and a suggested prevention action.
 8. **Audit (`/activity`).** See every PayPal call with its `paypal-debug-id`.
-9. **Storefront (`/store`).** The fictional seller's shop, with real sandbox Checkout and published returns, shipping and size-guide policy pages.
+9. **Storefront (`/store`).** The fictional seller's shop, with Checkout buttons wired to Orders v2 create-and-capture routes (they need sandbox credentials) and published returns, shipping and size-guide policy pages.
 
 ---
 
@@ -296,6 +323,10 @@ Import `postman/DisputeDefender.postman_collection.json` and `postman/DisputeDef
 
 **Development:** almost all of this codebase was written by AI (Claude, through the Claude Code CLI), under our direction. A multi-agent pipeline generated the first version during the hackathon, and the rest was finished in a Claude Code session. The tests and documentation were also written with Claude.
 
+**Through the Claude Code CLI.** With `ANTHROPIC_PROVIDER=claude-cli` the same Claude models run through a local Claude Code CLI instead of an API key. The demo-video agent run used this path.
+
+**Demo video:** **Higgsfield** generated the AI b-roll stills and clips (mood footage only; every product screen is a real screen recording), and any music is ElevenLabs Music generated through Higgsfield. The founder's own voice narrates.
+
 **What the AI does not do:** it does not compute the strength score, the expected value, or the pattern counts. All three are deterministic code. It never calls a PayPal-mutating endpoint; those run only from seller-approved routes.
 
 ---
@@ -304,7 +335,9 @@ Import `postman/DisputeDefender.postman_collection.json` and `postman/DisputeDef
 
 - The strength score is a **rubric**, not a trained model, and we make no accuracy claims for it.
 - The fixture dispute history is fictional. It carries a badge in the UI, and every PayPal-mutating route rejects it with `422`.
-- The app has a single seller and no multi-seller auth. It runs in the sandbox only, and moving to production would need live PayPal credentials and review.
+- **No live PayPal run.** The demo and video use the mock adapter. The PayPal client is unit-tested against fixtures in PayPal's documented shapes; a live sandbox run has not been done.
+- The citation checker verifies that numbers, dates, tracking-style identifiers and quoted strings appear in the cited sources. It does not verify that a sentence's meaning is faithful, which is why the seller approves every draft.
+- The app has a single seller and no multi-seller auth. It is built for the sandbox, and moving to production would need live PayPal credentials and review.
 - Evidence types allowed per reason code live in `src/lib/paypal/evidence-rules.ts`. They follow PayPal's Disputes API documentation and still need confirming with a live sandbox `provide-evidence` call (`npm run smoke:evidence`). That file is the single place to correct them.
 
 ---
