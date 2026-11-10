@@ -7,7 +7,8 @@
  * 4. Every stored quote is verified as a verbatim substring of its message.
  * 5. Output is a headline ("4 of 6 SNAD claims on JT-114 mention sizing") plus a prevention action.
  */
-import Anthropic from '@anthropic-ai/sdk';
+import type Anthropic from '@anthropic-ai/sdk';
+import { createMessage } from '@/lib/agent/anthropic';
 import { nanoid } from 'nanoid';
 import * as dbModule from '@/lib/db';
 import {
@@ -304,9 +305,6 @@ const TAG_TOOL = {
 const BATCH_SIZE = 25;
 
 function claudeTagger(): Tagger {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const model = process.env.ANTHROPIC_MODEL_AGENT || 'claude-sonnet-5-5';
-
   return async (messages) => {
     const results: MessageTag[] = [];
     for (let i = 0; i < messages.length; i += BATCH_SIZE) {
@@ -328,11 +326,14 @@ function claudeTagger(): Tagger {
       try {
         // Current Sonnet/Opus models reject forced tool_choice and sampling
         // parameters, so the tool is requested in the prompt instead.
-        const resp = await client.messages.create({
-          model,
-          max_tokens: 16_000,
-          tools: [TAG_TOOL],
-          tool_choice: { type: 'auto' },
+        // Same seam as the agent: the Messages API, or the local Claude Code
+        // CLI when ANTHROPIC_PROVIDER=claude-cli.
+        const resp = await createMessage({
+          role: 'agent',
+          system: 'You tag buyer messages with root-cause themes and return them through the tag_messages tool.',
+          maxTokens: 16_000,
+          timeoutMs: 180_000,
+          tools: [TAG_TOOL as Anthropic.Tool],
           messages: [{ role: 'user', content: prompt }],
         });
         const block = resp.content.find((b) => b.type === 'tool_use');
@@ -377,7 +378,8 @@ function claudeTagger(): Tagger {
 
 export function defaultTagger(): Tagger {
   const mock = process.env.ANTHROPIC_MOCK === '1' || process.env.ANTHROPIC_MOCK === 'true';
-  if (mock || !process.env.ANTHROPIC_API_KEY) return keywordTagger;
+  const cli = process.env.ANTHROPIC_PROVIDER === 'claude-cli';
+  if (mock || (!process.env.ANTHROPIC_API_KEY && !cli)) return keywordTagger;
   return claudeTagger();
 }
 

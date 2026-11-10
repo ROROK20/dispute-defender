@@ -8,12 +8,19 @@ export function MockModeBanner({
   anthropic = process.env.ANTHROPIC_MOCK === '1',
 }: MockModeBannerProps) {
   if (!paypal && !anthropic) return null;
-  const parts: string[] = [];
-  if (paypal) parts.push('PayPal responses are fixtures');
-  if (anthropic) parts.push('agent output is scripted');
+  // Say exactly which side is mocked: with PayPal mocked and a real model, the
+  // agent's output is real Claude and the banner must not say otherwise.
+  let text: string;
+  if (paypal && anthropic) {
+    text = 'PayPal responses are fixtures and agent output is scripted. For tests and CI only. Nothing here is a real PayPal or Claude result.';
+  } else if (paypal) {
+    text = 'PayPal responses are fixtures. No call here reaches PayPal; the agent output is real Claude.';
+  } else {
+    text = 'agent output is scripted. For tests and CI only. Nothing here is a real Claude result.';
+  }
   return (
     <div role="alert" className="bg-red-600 px-4 py-2 text-center text-sm font-semibold text-white">
-      MOCK MODE: {parts.join(' and ')}. For tests and CI only. Nothing here is a real PayPal or Claude result.
+      MOCK MODE: {text}
     </div>
   );
 }
