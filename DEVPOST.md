@@ -158,7 +158,7 @@ To run the checks: `npm run typecheck`, `npm run lint`, `npm test`, and `PAYPAL_
 - The rest was finished in a Claude Code session: the 11 missing files, 60 cross-file type errors reconciled, and startup bugs fixed. The tests, documentation and this description were also written with Claude.
 
 **To make the demo video:**
-- **Higgsfield** generated the AI b-roll stills and clips (mood footage only; every product screen in the video is a real screen recording). Music, if used, is ElevenLabs Music generated through Higgsfield.
+- **Higgsfield** generated the AI b-roll stills and clips (mood footage only; every product screen in the video is a real screen recording). The background music is ElevenLabs Music, generated through Higgsfield.
 - **The founder's own voice** narrates the video. No synthetic voice is used for the narration.
 
 ## Built With
