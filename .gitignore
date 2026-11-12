@@ -53,3 +53,12 @@ data/live-cli-run.json
 
 demo/work*/
 demo/out/
+
+# internal owner briefings and local demo media (never public)
+BRIEFINGS/
+demo/frames*/
+demo/v2/ai/*.mp4
+demo/v2/higgsfield/
+demo/v2/music/*.wav
+demo/v2/music/*.mp3
+demo/v2/voice/*.wav
